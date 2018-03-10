@@ -610,15 +610,15 @@ namespace ImageCompressionJMPEG
                 {
                     for (int x = 0; x < pictureBoxOne.Image.Width; x += 16)
                     {
-                        if (x * widthScaler - (x + motionVectors[index].x) * widthScaler == 0 &&
-                            y * heightScaler - (y + motionVectors[index].y) * heightScaler == 0)
+                        if (x * heightScaler - (x + motionVectors[index].x) * heightScaler == 0 &&
+                            y * widthScaler - (y + motionVectors[index].y) * widthScaler == 0)
                         {
-                            e.Graphics.DrawEllipse(pen, y * heightScaler, x * widthScaler, 3, 3);
+                            e.Graphics.DrawEllipse(pen, y * widthScaler, x * heightScaler, 3, 3);
                         }
                         else
                         {
-                            e.Graphics.DrawLine(pen, y * heightScaler, x * widthScaler,
-                               (y + motionVectors[index].y) * heightScaler, (x + motionVectors[index].x) * widthScaler);
+                            e.Graphics.DrawLine(pen, y * widthScaler, x * heightScaler,
+                               (y + motionVectors[index].y) * widthScaler, (x + motionVectors[index].x) * heightScaler);
                         }
                         index++;
                     }

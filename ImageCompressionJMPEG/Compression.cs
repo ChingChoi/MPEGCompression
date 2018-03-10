@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Drawing;
 using System.Linq;
 using System.Text;
@@ -227,6 +228,16 @@ namespace ImageCompressionJMPEG
 
         public static int numOfFrame = 0;
 
+        /// <summary>
+        /// Original width of the image
+        /// </summary>
+        public static int originalWidth = 0;
+
+        /// <summary>
+        /// Original height of the image
+        /// </summary>
+        public static int originalHeight = 0;
+
         public static double[] currentQuantizationTable;
         public static int SearchArea { get => searchArea; set => searchArea = value; }
 
@@ -239,8 +250,20 @@ namespace ImageCompressionJMPEG
         /// <returns></returns>
         public static Bitmap JPEGCompression(Bitmap bitmap, int width, int height)
         {
+            originalHeight = height;
+            originalWidth = width;
             currentQuantizationTable = quantizationTableJPEG;
             YCrCb yCrCb = convertToYCrCb(bitmap);
+            if (width % 8 != 0 || height % 8 != 0)
+            {
+                int rightPad = width % 8;
+                int bottomPad = height % 8;
+                yCrCb.Y = padChannel(yCrCb.Y, width, height);
+                yCrCb.Cr = padChannel(yCrCb.Cr, width, height);
+                yCrCb.Cb = padChannel(yCrCb.Cb, width, height);
+                width += rightPad;
+                height += bottomPad;
+            }
             YCrCb subYCrCb = subSample(yCrCb, width, height);
             YCrCb filledYCrCb = fillSubSample(subYCrCb, width, height);
             DYCrCb dctYCrCb = DiscreteCosineTransform(subYCrCb, width, height);
@@ -249,8 +272,19 @@ namespace ImageCompressionJMPEG
             YCrCb iYCrCb = InverseDiscreteCosineTransform(iQYCrCb, width, height);
             YCrCb fillediYCrCb = fillSubSample(iYCrCb, width, height);
 
-            byte[] widthByteArray = BitConverter.GetBytes(width);
-            byte[] heightByteArray = BitConverter.GetBytes(height);
+            if (originalWidth % 8 != 0 || originalHeight % 8 != 0)
+            {
+                int rightPad = originalWidth % 8;
+                int bottomPad = originalHeight % 8;
+                fillediYCrCb.Y = unpadChannel(fillediYCrCb.Y, originalWidth, originalHeight);
+                fillediYCrCb.Cr = unpadChannel(fillediYCrCb.Cr, originalWidth, originalHeight);
+                fillediYCrCb.Cb = unpadChannel(fillediYCrCb.Cb, originalWidth, originalHeight);
+                width -= rightPad;
+                height -= bottomPad;
+            }
+
+            byte[] widthByteArray = BitConverter.GetBytes(originalWidth);
+            byte[] heightByteArray = BitConverter.GetBytes(originalHeight);
 
             int backWidth = BitConverter.ToInt32(widthByteArray, 0);
             int backHeight = BitConverter.ToInt32(widthByteArray, 0);
@@ -258,20 +292,14 @@ namespace ImageCompressionJMPEG
             Bitmap result = convertToBitmap(fillediYCrCb, width, height);
 
             compressedByteArray = new byte[widthByteArray.Length + heightByteArray.Length +
-                                  qYCrCb.Y.Length + qYCrCb.Cr.Length +
-                                  qYCrCb.Cb.Length];
-            System.Buffer.BlockCopy(widthByteArray, 0, compressedByteArray,
-                                    0, widthByteArray.Length);
-            System.Buffer.BlockCopy(heightByteArray, 0, compressedByteArray,
-                                    widthByteArray.Length, heightByteArray.Length);
-            System.Buffer.BlockCopy(qYCrCb.Y, 0, compressedByteArray,
-                                    widthByteArray.Length + heightByteArray.Length,
+                                  qYCrCb.Y.Length + qYCrCb.Cr.Length + qYCrCb.Cb.Length];
+            System.Buffer.BlockCopy(widthByteArray, 0, compressedByteArray, 0, widthByteArray.Length);
+            System.Buffer.BlockCopy(heightByteArray, 0, compressedByteArray, widthByteArray.Length, heightByteArray.Length);
+            System.Buffer.BlockCopy(qYCrCb.Y, 0, compressedByteArray, widthByteArray.Length + heightByteArray.Length,
                                     qYCrCb.Y.Length);
-            System.Buffer.BlockCopy(qYCrCb.Cr, 0, compressedByteArray,
-                                    widthByteArray.Length + heightByteArray.Length
+            System.Buffer.BlockCopy(qYCrCb.Cr, 0, compressedByteArray, widthByteArray.Length + heightByteArray.Length
                                     + qYCrCb.Y.Length, qYCrCb.Cr.Length);
-            System.Buffer.BlockCopy(qYCrCb.Cb, 0, compressedByteArray,
-                                    widthByteArray.Length + heightByteArray.Length
+            System.Buffer.BlockCopy(qYCrCb.Cb, 0, compressedByteArray, widthByteArray.Length + heightByteArray.Length
                                     + qYCrCb.Y.Length + qYCrCb.Cr.Length, qYCrCb.Cb.Length);
 
             compressedByteArray = RLCompression.ModifiedRunLengthCompression(compressedByteArray);
@@ -329,6 +357,8 @@ namespace ImageCompressionJMPEG
 
             YCrCb rFilledIYCrCb = convertToYCrCb(reference);
             YCrCb rIYCrCb = subSample(rFilledIYCrCb, width, height);
+            DYCrCb rdctYCrCb = DiscreteCosineTransform(rIYCrCb, width, height);
+            YCrCb rQYCrCb = QuantizationAndZigzag(rdctYCrCb, width, height);
 
             YCrCb cYCrCb = convertToYCrCb(current);
             YCrCb cSubYCrCb = subSample(cYCrCb, width, height);
@@ -459,12 +489,12 @@ namespace ImageCompressionJMPEG
             offset += widthByteArray.Length;
             System.Buffer.BlockCopy(heightByteArray, 0, compressedByteArray, offset, heightByteArray.Length);
             offset += heightByteArray.Length;
-            System.Buffer.BlockCopy(rIYCrCb.Y, 0, compressedByteArray, offset, rIYCrCb.Y.Length);
-            offset += rIYCrCb.Y.Length;
-            System.Buffer.BlockCopy(rIYCrCb.Cr, 0, compressedByteArray, offset, rIYCrCb.Cr.Length);
-            offset += rIYCrCb.Cr.Length;
-            System.Buffer.BlockCopy(rIYCrCb.Cb, 0, compressedByteArray, offset, rIYCrCb.Cb.Length);
-            offset += rIYCrCb.Cb.Length;
+            System.Buffer.BlockCopy(rQYCrCb.Y, 0, compressedByteArray, offset, rQYCrCb.Y.Length);
+            offset += rQYCrCb.Y.Length;
+            System.Buffer.BlockCopy(rQYCrCb.Cr, 0, compressedByteArray, offset, rQYCrCb.Cr.Length);
+            offset += rQYCrCb.Cr.Length;
+            System.Buffer.BlockCopy(rQYCrCb.Cb, 0, compressedByteArray, offset, rQYCrCb.Cb.Length);
+            offset += rQYCrCb.Cb.Length;
             System.Buffer.BlockCopy(convertToByteFromVector(motionVectorsY), 0, compressedByteArray, offset, motionVectorsY.Length * 2);
             offset += motionVectorsY.Length * 2;
             System.Buffer.BlockCopy(convertToByteFromVector(motionVectorsCr), 0, compressedByteArray, offset, motionVectorsCr.Length * 2);
@@ -516,10 +546,8 @@ namespace ImageCompressionJMPEG
 
             System.Buffer.BlockCopy(inputArray, offset, qY, 0, qY.Length);
             offset += qY.Length;
-
             System.Buffer.BlockCopy(inputArray, offset, qCr, 0, qCr.Length);
             offset += qCr.Length;
-
             System.Buffer.BlockCopy(inputArray, offset, qCb, 0, qCb.Length);
             offset += qCb.Length;
 
@@ -529,7 +557,6 @@ namespace ImageCompressionJMPEG
             YCrCb fillediYCrCb = fillSubSample(iYCrCb, width, height);
             Bitmap result = convertToBitmap(fillediYCrCb, width, height);
             return result;
-
         }
 
         public static byte[] convertToByteFromVector(Vector[] vectors)
@@ -701,7 +728,8 @@ namespace ImageCompressionJMPEG
         {
             Bitmap bitmap = new Bitmap(width, height);
             int index = 0;
-
+            Color[] pixels = new Color[yCrCb.Y.Length];
+            
             for (int i = 0; i < height; i++)
             {
                 for (int j = 0; j < width; j++)
@@ -714,6 +742,8 @@ namespace ImageCompressionJMPEG
                     byte G = getBoundedByte(tempG);
                     byte B = getBoundedByte(tempB);
                     Color pixel = Color.FromArgb(R, G, B);
+                    pixels[index] = pixel;
+
                     bitmap.SetPixel(i, j, pixel);
                     index++;
                 }
@@ -1025,7 +1055,7 @@ namespace ImageCompressionJMPEG
                         }
                         for (int x = 0; x < blockSize && x + currentBlockRow * blockSize < height; x++)
                         {
-                            for (int y = 0; y < blockSize && y + currentBlockColumn * blockSize < width; y++)
+                            for ( int y = 0; y < blockSize && y + currentBlockColumn * blockSize < width; y++)
                             {
                                 tempResult += channel[(x + currentBlockRow * blockSize) *
                                     width + (y + currentBlockColumn * blockSize)] *
@@ -1038,7 +1068,7 @@ namespace ImageCompressionJMPEG
                         tempResult = 0;
                     }
                 }
-                currentBlockColumn++;
+                    currentBlockColumn++;
                 if (currentBlockColumn == numOfBlockColumn)
                 {
                     currentBlockColumn = 0;
@@ -1126,8 +1156,8 @@ namespace ImageCompressionJMPEG
                     for (int y = 0; y < blockSize && y + currentBlockColumn * blockSize < height; y++)
                     {
                         result[(x + currentBlockRow * blockSize) * width +
-                            (y + currentBlockColumn * blockSize)] = getBoundedSByte((channel[(x + currentBlockRow * blockSize) * width +
-                            (y + currentBlockColumn * blockSize)] / currentQuantizationTable[x * blockSize + y]));
+                            (y + currentBlockColumn * blockSize)] = getBoundedSByte(Math.Round((channel[(x + currentBlockRow * blockSize) * width +
+                            (y + currentBlockColumn * blockSize)] / currentQuantizationTable[x * blockSize + y])));
                     }
                 }
                 currentBlockColumn++;
@@ -1334,6 +1364,51 @@ namespace ImageCompressionJMPEG
                 }
             }
             return result;
+        }
+
+        public static byte[] padChannel(byte[] channel, int width, int height)
+        {
+            int rightPad = width % 8;
+            int bottomPad = height % 8;
+            byte[] paddedChannel = new byte[(width + rightPad) * (height + bottomPad)];
+            int padIndex = 0;
+            int channelIndex = 0;
+            for (int i = 0; i < width + rightPad; i++)
+            {
+                for (int j = 0; j < height + bottomPad; j++)
+                {
+                    if (i < width && j < height)
+                    {
+                        paddedChannel[padIndex++] = channel[channelIndex++];
+                    }
+                    else
+                    {
+                        paddedChannel[padIndex++] = 0;
+                    }
+                }
+            }
+            return paddedChannel;
+        }
+
+        public static byte[] unpadChannel(byte[] paddedChannel, int width, int height)
+        {
+            int rightPad = width % 8;
+            int bottomPad = height % 8;
+            byte[] unpaddedChannel = new byte[width * height];
+            int unpadIndex = 0;
+            int channelIndex = 0;
+            for (int i = 0; i < width + rightPad; i++)
+            {
+                for (int j = 0; j < height + rightPad; j++)
+                {
+                    if (i < width && j < height)
+                    {
+                        unpaddedChannel[unpadIndex++] = paddedChannel[channelIndex];
+                    }
+                    channelIndex++;
+                }
+            }
+            return unpaddedChannel;
         }
 
     }
