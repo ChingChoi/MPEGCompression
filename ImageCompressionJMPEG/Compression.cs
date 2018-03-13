@@ -372,9 +372,9 @@ namespace ImageCompressionJMPEG
             int indexY = 0;
             int indexCr = 0;
             int indexCb = 0;
-            for (int y = 0; y < width; y+= macroSizeCrCb)
+            for (int y = 0; y < height; y+= macroSizeCrCb)
             {
-                for (int x = 0; x < height; x += macroSizeCrCb)
+                for (int x = 0; x < width; x += macroSizeCrCb)
                 {
                     Vector motionVectorY = new Vector(0, 0);
                     Vector motionVectorCr = new Vector(0, 0);
@@ -389,9 +389,9 @@ namespace ImageCompressionJMPEG
                     {
                         for (int j = -searchArea; j <= searchArea; j++)
                         {
-                            if (x + i >= 0 && y + j >= 0 && x + i + macroSizeY - 1< width && y + j + macroSizeY - 1< height)
+                            if (x + i >= 0 && y + j >= 0 && x + i + macroSizeY - 1 < width && y + j + macroSizeY - 1 < height)
                             {
-                                if (x < width / 2 && y < height / 2)
+                                if (x < width / 2 && y < height / 2 && x + i + macroSizeCrCb - 1 < height / 2 && y + j + macroSizeCrCb - 1 < width / 2)
                                 {
                                     double tempMinCr;
                                     double tempMinCb;
@@ -415,7 +415,7 @@ namespace ImageCompressionJMPEG
                                         motionVectorCb.y = j;
                                     }
                                 }
-                                if (x % macroSizeY == 0 && y % macroSizeY == 0)
+                                if (x % macroSizeY == 0 && y % macroSizeY == 0 && x + i - 1 < height && y + j - 1 < width)
                                 {
                                     double tempMinY;
                                     tempMinY = MAD(macroSizeY, x, y, i, j, cSubYCrCb.Y, rIYCrCb.Y, width, height);
@@ -435,7 +435,7 @@ namespace ImageCompressionJMPEG
                     }
                     if (x % macroSizeY == 0 && y % macroSizeY == 0)
                     {
-                        if (currentMinY == centralMinY)
+                        if (Math.Round(currentMinY) == Math.Round(centralMinY))
                         {
                             motionVectorY.x = 0;
                             motionVectorY.y = 0;
@@ -475,7 +475,6 @@ namespace ImageCompressionJMPEG
 
             int backWidth = BitConverter.ToInt32(widthByteArray, 0);
             int backHeight = BitConverter.ToInt32(widthByteArray, 0);
-
 
             int channelLength = rIYCrCb.Y.Length + rIYCrCb.Cr.Length + rIYCrCb.Cb.Length;
             int PFrameLength = (numOfFrame - 1) * ((motionVectorsY.Length + motionVectorsCr.Length + motionVectorsCb.Length)*2 + channelLength);
@@ -635,8 +634,8 @@ namespace ImageCompressionJMPEG
                             }
                         }
                     }
+                    index++;
                 }
-                index++;
             }
             return current;
         }
