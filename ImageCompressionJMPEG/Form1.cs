@@ -27,10 +27,14 @@ namespace ImageCompressionJMPEG
         private const int MOTIONVECTOR_HORZ_OFFSET = 0;
         private const int MOTIONVECTOR_PANEL_HEIGHT = 30;
         private const int LEFT_OFFSET = 14;
-        private const int LABEL_SIZE = 19;
+        private const int LABEL_SIZE = 24;
         private const int BUTTON_GAP = 3;
+        private const int NUM_DISPLAY_FRAME = 6;
+        private const float BUTTON_FONT_SIZE = 8f;
         private PictureBox pictureBoxOne;
         private PictureBox pictureBoxTwo;
+        private PictureBox pictureBoxThree;
+        private PictureBox[] pictureBoxFrames;
         private bool addToOne = true;
         private Panel panel;
         Panel motionVectorInfoPanel;
@@ -40,6 +44,8 @@ namespace ImageCompressionJMPEG
         private Label currentSearchAreaRange;
         private CustomButton addSearchAreaRange;
         private CustomButton subtractSearchAreaRange;
+        private CustomButton jpegView;
+        private CustomButton mpegView;
         private Bitmap compressedBitmap;
         private byte[] compressedByteArray;
         private Color themeColor;
@@ -92,6 +98,24 @@ namespace ImageCompressionJMPEG
                 pictureBoxOne.Size = new Size(w / 2 - PICTUREBOX_OFFSET * 3 / 2, h - 54 - PICTUREBOX_OFFSET * 2);
                 pictureBoxTwo.Size = new Size(w / 2 - PICTUREBOX_OFFSET * 3 / 2, h - 54 - PICTUREBOX_OFFSET * 2);
                 pictureBoxTwo.Location = new Point(w / 2 + PICTUREBOX_OFFSET / 2, 27 + PICTUREBOX_OFFSET);
+                pictureBoxThree.Size = new Size(w - PICTUREBOX_OFFSET * 2, h - 54 - PICTUREBOX_OFFSET * 3);
+                //                pictureBoxThree.Location = new Point(w / 2 - pictureBoxThree.Size.Width / 2, 27 + PICTUREBOX_OFFSET);
+                pictureBoxThree.Location = new Point(PICTUREBOX_OFFSET, 27 + PICTUREBOX_OFFSET);
+                motionVectorInfoPanel.Width = w;
+                jpegView.Location = new Point(motionVectorInfoPanel.Size.Width - LABEL_SIZE * 2 - PICTUREBOX_OFFSET, BUTTON_GAP);
+                mpegView.Location = new System.Drawing.Point(motionVectorInfoPanel.Size.Width - LABEL_SIZE - PICTUREBOX_OFFSET, BUTTON_GAP);
+                for (int i = 0; i < pictureBoxFrames.Length; i++)
+                {
+                    pictureBoxFrames[i].Size = new Size(pictureBoxThree.Size.Width / 3, pictureBoxThree.Size.Height / 3);
+                    if (i < 3)
+                    {
+                        pictureBoxFrames[i].Location = new Point(PICTUREBOX_OFFSET, 27 + PICTUREBOX_OFFSET + i * pictureBoxFrames[i].Size.Height);
+                    }
+                    else
+                    {
+                        pictureBoxFrames[i].Location = new Point(motionVectorInfoPanel.Size.Width - PICTUREBOX_OFFSET - pictureBoxFrames[i].Size.Width, 27 + PICTUREBOX_OFFSET + (i - 3) * pictureBoxFrames[i].Size.Height);
+                    }
+                }
             }
         }
 
@@ -106,37 +130,49 @@ namespace ImageCompressionJMPEG
             {
                 dialog.Title = "Open Image";
                 dialog.Filter = "images|*.JPG; *.PNG; *.GJF; *.bmp; *.CJPG; *.CMPEG; * .CMPEG";
+                dialog.Multiselect = true;
                 if (dialog.ShowDialog() == DialogResult.OK)
                 {
-                    if (Path.GetExtension(dialog.FileName).Equals(".CJPG"))
+                    if (Compression.jView && Path.GetExtension(dialog.FileNames[0]).Equals(".CJPG"))
                     {
                         if (addToOne)
                         {
                             pictureBoxOne.Image = null;
-                            pictureBoxOne.Image = Compression.JPEGDecompression(File.ReadAllBytes(dialog.FileName));
+                            pictureBoxOne.Image = Compression.JPEGDecompression(File.ReadAllBytes(dialog.FileNames[0]));
                         }
                         else
                         {
                             pictureBoxTwo.Image = null;
-                            pictureBoxTwo.Image = Compression.JPEGDecompression(File.ReadAllBytes(dialog.FileName));
+                            pictureBoxTwo.Image = Compression.JPEGDecompression(File.ReadAllBytes(dialog.FileNames[0]));
                         }
                     }
-                    else if (Path.GetExtension(dialog.FileName).Equals(".CMPEG"))
+                    else if (Compression.jView && Path.GetExtension(dialog.FileNames[0]).Equals(".CMPEG"))
                     {
                         pictureBoxOne.Image = null;
-                        pictureBoxOne.Image = Compression.MPEGDecompression(File.ReadAllBytes(dialog.FileName));
+                        pictureBoxOne.Image = Compression.MPEGDecompression(File.ReadAllBytes(dialog.FileNames[0]));
+                    }
+                    else if (Compression.jView)
+                    {
+                        if (addToOne)
+                        {
+                            pictureBoxOne.Image = null;
+                            pictureBoxOne.Image = new Bitmap(dialog.FileNames[0]);
+                        }
+                        else
+                        {
+                            pictureBoxTwo.Image = null;
+                            pictureBoxTwo.Image = new Bitmap(dialog.FileNames[0]);
+                        }
                     }
                     else
                     {
-                        if (addToOne)
+                        pictureBoxThree.Image = null;
+                        pictureBoxThree.Image = new Bitmap(dialog.FileNames[0]);
+
+                        for (int i = 0; i < dialog.FileNames.Length && i < pictureBoxFrames.Length; i++)
                         {
-                            pictureBoxOne.Image = null;
-                            pictureBoxOne.Image = new Bitmap(dialog.FileName);
-                        }
-                        else
-                        {
-                            pictureBoxTwo.Image = null;
-                            pictureBoxTwo.Image = new Bitmap(dialog.FileName);
+                            pictureBoxFrames[i].Image = null;
+                            pictureBoxFrames[i].Image = new Bitmap(dialog.FileNames[i]);
                         }
                     }
                     Refresh();
@@ -189,6 +225,20 @@ namespace ImageCompressionJMPEG
             Refresh();
         }
 
+        private void addImageThree(object sender, EventArgs e)
+        {
+            openImage();
+        }
+
+        private void removeImageThree(object sender, EventArgs e)
+        {
+            pictureBoxThree.Image = null;
+            for (int i = 0; i < pictureBoxFrames.Length; i++)
+            {
+                pictureBoxFrames[i].Image = null;
+            }
+        }
+
         private void initializeCustom()
         {
             //
@@ -215,6 +265,26 @@ namespace ImageCompressionJMPEG
             pictureBoxTwo.SizeMode = PictureBoxSizeMode.StretchImage;
             pictureBoxTwo.Paint += new PaintEventHandler(pictureBoxTwo_Paint);
             //
+            // pictureBoxThree shown when mpeg view active
+            //
+            pictureBoxThree = new PictureBox();
+            pictureBoxThree.Name = "pictureBoxThree";
+            pictureBoxThree.TabStop = false;
+            pictureBoxThree.BackColor = themeBackgroundColorTwo;
+            pictureBoxThree.SizeMode = PictureBoxSizeMode.StretchImage;
+            //
+            // pictureBoxFrames
+            //
+            pictureBoxFrames = new PictureBox[NUM_DISPLAY_FRAME];
+            for (int i = 0; i < pictureBoxFrames.Length; i++)
+            {
+                pictureBoxFrames[i] = new PictureBox();
+                pictureBoxFrames[i].Name = "frame" + i;
+                pictureBoxFrames[i].TabStop = false;
+                pictureBoxFrames[i].BackColor = themeBackgroundColorTwo;
+                pictureBoxFrames[i].SizeMode = PictureBoxSizeMode.StretchImage;
+            }
+            //
             // conext menu for pictureBoxOne
             //
             ContextMenu cm = new ContextMenu();
@@ -236,6 +306,17 @@ namespace ImageCompressionJMPEG
             cmTwo.MenuItems.Add(mnuAddImageTwo);
             cmTwo.MenuItems.Add(mnuRemoveImageTwo);
             pictureBoxTwo.ContextMenu = cmTwo;
+            //
+            // context menu for pictureBoxThree
+            //
+            ContextMenu cmThree = new ContextMenu();
+            MenuItem mnuAddImageThree = new MenuItem("Add image");
+            MenuItem mnuRemoveImageThree = new MenuItem("Remove image");
+            mnuAddImageThree.Click += new EventHandler(addImageThree);
+            mnuRemoveImageThree.Click += new EventHandler(removeImageThree);
+            cmThree.MenuItems.Add(mnuAddImageThree);
+            cmThree.MenuItems.Add(mnuRemoveImageThree);
+            pictureBoxThree.ContextMenu = cmThree;
             // 
             // panel1
             // 
@@ -287,7 +368,7 @@ namespace ImageCompressionJMPEG
             minForm.BackgroundImageLayout = System.Windows.Forms.ImageLayout.Zoom;
             minForm.FlatAppearance.BorderSize = 0;
             minForm.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
-            minForm.Font = new System.Drawing.Font("Microsoft Sans Serif", 8F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            minForm.Font = new System.Drawing.Font("Microsoft Sans Serif", BUTTON_FONT_SIZE, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
             minForm.Location = new System.Drawing.Point(this.Width-105, 0);
             minForm.Name = "minForm";
             minForm.Size = new System.Drawing.Size(30, 25);
@@ -327,7 +408,7 @@ namespace ImageCompressionJMPEG
             // motionVectorInfoPanel
             //
             motionVectorInfoPanel = new Panel();
-//            motionVectorInfoPanel.BackColor = themeBackgroundColor;
+            motionVectorInfoPanel.BackColor = themeBackgroundColor;
             panel.Controls.Add(motionVectorInfoPanel);
             motionVectorInfoPanel.Location = new Point(0, 27);
             motionVectorInfoPanel.Name = "motionVectorInfoPanel";
@@ -339,7 +420,7 @@ namespace ImageCompressionJMPEG
             currentSearchAreaRange.BorderStyle = System.Windows.Forms.BorderStyle.None;
             currentSearchAreaRange.Location = new System.Drawing.Point(PICTUREBOX_OFFSET, BUTTON_GAP);
             currentSearchAreaRange.Size = new System.Drawing.Size(LABEL_SIZE, LABEL_SIZE);
-            currentSearchAreaRange.Font = new System.Drawing.Font("Microsoft Sans Serif", 6F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            currentSearchAreaRange.Font = new System.Drawing.Font("Microsoft Sans Serif", BUTTON_FONT_SIZE, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
             currentSearchAreaRange.TextAlign = ContentAlignment.MiddleCenter;
             currentSearchAreaRange.Text = "15";
             currentSearchAreaRange.ForeColor = themeColor;
@@ -352,8 +433,8 @@ namespace ImageCompressionJMPEG
             addSearchAreaRange.BackgroundImageLayout = System.Windows.Forms.ImageLayout.Zoom;
             addSearchAreaRange.FlatAppearance.BorderSize = 0;
             addSearchAreaRange.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
-            addSearchAreaRange.Font = new System.Drawing.Font("Microsoft Sans Serif", 6F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            addSearchAreaRange.Location = new System.Drawing.Point(PICTUREBOX_OFFSET + LABEL_SIZE + BUTTON_GAP, BUTTON_GAP);
+            addSearchAreaRange.Font = new System.Drawing.Font("Microsoft Sans Serif", BUTTON_FONT_SIZE, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            addSearchAreaRange.Location = new System.Drawing.Point(PICTUREBOX_OFFSET + LABEL_SIZE, BUTTON_GAP);
             addSearchAreaRange.Name = "addSearchAreaRange";
             addSearchAreaRange.Size = new System.Drawing.Size(LABEL_SIZE, LABEL_SIZE);
             addSearchAreaRange.TabStop = false;
@@ -371,8 +452,8 @@ namespace ImageCompressionJMPEG
             subtractSearchAreaRange.BackgroundImageLayout = System.Windows.Forms.ImageLayout.Zoom;
             subtractSearchAreaRange.FlatAppearance.BorderSize = 0;
             subtractSearchAreaRange.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
-            subtractSearchAreaRange.Font = new System.Drawing.Font("Microsoft Sans Serif", 6F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            subtractSearchAreaRange.Location = new System.Drawing.Point(PICTUREBOX_OFFSET + LABEL_SIZE * 2 + BUTTON_GAP * 2, BUTTON_GAP);
+            subtractSearchAreaRange.Font = new System.Drawing.Font("Microsoft Sans Serif", BUTTON_FONT_SIZE, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, (byte)0);
+            subtractSearchAreaRange.Location = new System.Drawing.Point(PICTUREBOX_OFFSET + LABEL_SIZE * 2, BUTTON_GAP);
             subtractSearchAreaRange.Name = "subtractSearchAreaRange";
             subtractSearchAreaRange.Size = new System.Drawing.Size(LABEL_SIZE, LABEL_SIZE);
             subtractSearchAreaRange.TabStop = false;
@@ -383,6 +464,43 @@ namespace ImageCompressionJMPEG
             subtractSearchAreaRange.BackColor = themeBackgroundColorTwo;
             subtractSearchAreaRange.Click += new System.EventHandler(this.subtractSearchAreaRange_Click);
             motionVectorInfoPanel.Controls.Add(subtractSearchAreaRange);
+            //
+            // jpegView
+            //
+            jpegView = new CustomButton();
+            jpegView.BackgroundImageLayout = System.Windows.Forms.ImageLayout.Zoom;
+            jpegView.FlatAppearance.BorderSize = 0;
+            jpegView.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+            jpegView.Font = new System.Drawing.Font("Microsoft Sans Serif", BUTTON_FONT_SIZE, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, (byte)0);
+            jpegView.Name = "jpegView";
+            jpegView.Size = new System.Drawing.Size(LABEL_SIZE, LABEL_SIZE);
+            jpegView.TabStop = false;
+            jpegView.Text = "\u004A";
+            jpegView.ForeColor = themeColor;
+            jpegView.UseMnemonic = false;
+            jpegView.UseVisualStyleBackColor = true;
+            jpegView.BackColor = themeBackgroundColorTwo;
+            jpegView.Click += new System.EventHandler(this.jpegView_Click);
+            motionVectorInfoPanel.Controls.Add(jpegView);
+            //
+            // mpegView
+            //
+            mpegView = new CustomButton();
+            mpegView.BackgroundImageLayout = System.Windows.Forms.ImageLayout.Zoom;
+            mpegView.FlatAppearance.BorderSize = 0;
+            mpegView.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+            mpegView.Font = new System.Drawing.Font("Microsoft Sans Serif", BUTTON_FONT_SIZE, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            mpegView.Name = "mpegView";
+            mpegView.Size = new System.Drawing.Size(LABEL_SIZE, LABEL_SIZE);
+            mpegView.TabStop = false;
+            mpegView.Text = "\u004D";
+            mpegView.ForeColor = themeColor;
+            mpegView.UseMnemonic = false;
+            mpegView.UseVisualStyleBackColor = true;
+            mpegView.BackColor = themeBackgroundColorTwo;
+            mpegView.Click += new System.EventHandler(this.mpegView_Click);
+            motionVectorInfoPanel.Controls.Add(mpegView);
+
         }
 
         /// <summary>
@@ -610,15 +728,15 @@ namespace ImageCompressionJMPEG
                 {
                     for (int x = 0; x < pictureBoxOne.Image.Width; x += 16)
                     {
-                        if (x * heightScaler - (x + motionVectors[index].x) * heightScaler == 0 &&
-                            y * widthScaler - (y + motionVectors[index].y) * widthScaler == 0)
+                        if (y * heightScaler - (y + motionVectors[index].y) * heightScaler == 0 &&
+                            x * widthScaler - (x + motionVectors[index].x) * widthScaler == 0)
                         {
-                            e.Graphics.DrawEllipse(pen, y * widthScaler, x * heightScaler, 3, 3);
+                            e.Graphics.DrawEllipse(pen, x * widthScaler, y * heightScaler, 3, 3);
                         }
                         else
                         {
-                            e.Graphics.DrawLine(pen, y * widthScaler, x * heightScaler,
-                               (y + motionVectors[index].y) * widthScaler, (x + motionVectors[index].x) * heightScaler);
+                            e.Graphics.DrawLine(pen, x * widthScaler, y * heightScaler,
+                               (x + motionVectors[index].x) * widthScaler, (y + motionVectors[index].y) * heightScaler);
                         }
                         index++;
                     }
@@ -696,6 +814,42 @@ namespace ImageCompressionJMPEG
             {
                 currentSearchAreaRange.Text = "" + Compression.SearchArea;
             }
+        }
+
+        /// <summary>
+        /// Switch to jpeg view
+        /// </summary>
+        /// <param name="sender">sender object</param>
+        /// <param name="e">event</param>
+        private void jpegView_Click(object sender, EventArgs e)
+        {
+            panel.Controls.Add(pictureBoxOne);
+            panel.Controls.Add(pictureBoxTwo);
+            panel.Controls.Remove(pictureBoxThree);
+            for (int i = 0; i < pictureBoxFrames.Length; i++)
+            {
+                panel.Controls.Remove(pictureBoxFrames[i]);
+            }
+            Compression.mView = false;
+            Compression.jView = true;
+        }
+
+        /// <summary>
+        /// Switch to mpeg view
+        /// </summary>
+        /// <param name="sender">sender object</param>
+        /// <param name="e">event</param>
+        private void mpegView_Click(object sender, EventArgs e)
+        {
+            panel.Controls.Remove(pictureBoxOne);
+            panel.Controls.Remove(pictureBoxTwo);
+            panel.Controls.Add(pictureBoxThree);
+            for (int i = 0; i < pictureBoxFrames.Length; i++)
+            {
+                //panel.Controls.Add(pictureBoxFrames[i]);
+            }
+            Compression.mView = true;
+            Compression.jView = false;
         }
     }
 }

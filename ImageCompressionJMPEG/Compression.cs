@@ -200,7 +200,10 @@ namespace ImageCompressionJMPEG
         /// </summary>
         static byte[] compressedByteArray;
 
-        public  static Bitmap displayBitmap;
+        /// <summary>
+        /// Bitmap for display
+        /// </summary>
+        public static Bitmap displayBitmap;
 
         /// <summary>
         /// Byte array size after converting from an int
@@ -222,10 +225,19 @@ namespace ImageCompressionJMPEG
         /// </summary>
         public static bool JPEGTwo = false;
 
+        /// <summary>
+        /// macro block size for Y Channel
+        /// </summary>
         public static int macroSizeY = 16;
 
+        /// <summary>
+        /// macro block size for Cr Cb channels
+        /// </summary>
         public static int macroSizeCrCb = 8;
 
+        /// <summary>
+        /// Number of frames to be processed
+        /// </summary>
         public static int numOfFrame = 0;
 
         /// <summary>
@@ -237,6 +249,16 @@ namespace ImageCompressionJMPEG
         /// Original height of the image
         /// </summary>
         public static int originalHeight = 0;
+
+        /// <summary>
+        /// Indicate if currently on jpeg view
+        /// </summary>
+        public static bool jView = true;
+
+        /// <summary>
+        /// Indicate if currently on mpeg view
+        /// </summary>
+        public static bool mView = false;
 
         public static double[] currentQuantizationTable;
         public static int SearchArea { get => searchArea; set => searchArea = value; }
@@ -265,11 +287,11 @@ namespace ImageCompressionJMPEG
                 height += bottomPad;
             }
             YCrCb subYCrCb = subSample(yCrCb, width, height);
-            YCrCb filledYCrCb = fillSubSample(subYCrCb, width, height);
+//            YCrCb filledYCrCb = fillSubSample(subYCrCb, width, height);
             DYCrCb dctYCrCb = DiscreteCosineTransform(subYCrCb, width, height);
             YCrCb qYCrCb = QuantizationAndZigzag(dctYCrCb, width, height);
             DYCrCb iQYCrCb = InverseQuantizationAndZigzag(qYCrCb, width, height);
-            YCrCb iYCrCb = InverseDiscreteCosineTransform(iQYCrCb, width, height);
+            YCrCb iYCrCb = InverseDiscreteCosineTransform(dctYCrCb, width, height);
             YCrCb fillediYCrCb = fillSubSample(iYCrCb, width, height);
 
             if (originalWidth % 8 != 0 || originalHeight % 8 != 0)
@@ -592,7 +614,7 @@ namespace ImageCompressionJMPEG
                     {
                         for (int l = 0; l < N; l++)
                         {
-                            if (y + l < width && x + k < height && x + i + k < height && y + j + l < width)
+                            if (y + l < height && x + k < width && x + i + k < width && y + j + l < height)
                             {
                                 diffBlock[x + k + (y + l) * width] = (double)current[x + k + (y + l) * width] - (double)reference[x + i + k + (y + j + l) * width];
                             }
@@ -628,7 +650,7 @@ namespace ImageCompressionJMPEG
                     {
                         for (int l = 0; l < N; l++)
                         {
-                            if (y + l < width && x + k < height && x + i + k < height && y + j + l < width)
+                            if (y + l < height && x + k < width && x + i + k < width && y + j + l < height)
                             {
                                 current[x + k + (y + l) * width] = getBoundedByte((double)reference[x + i + k + (y + j + l) * width] + diffBlock[x + k + (y + l) * width]);
                             }
@@ -664,7 +686,7 @@ namespace ImageCompressionJMPEG
             {
                 for (int l = 0; l < N; l++)
                 {
-                    if (x + i + k >= 0 && y + j + l >= 0 && x + i + k < height && y + j + l < width && x + k < height && y + l < width)
+                    if (x + i + k >= 0 && y + j + l >= 0 && x + i + k < width && y + j + l < height && x + k < width && y + l < height)
                     {
                         double differences = 0;
                         differences = Math.Abs(C[x + k + (y + l) * width] - R[x + i + k + (y + j + l) * width]);
@@ -698,9 +720,9 @@ namespace ImageCompressionJMPEG
             byte[] Cb = new byte[bitmapSize];
             int index = 0;
 
-            for (int i = 0; i < bitmap.Height; i++)
+            for (int j = 0; j < bitmap.Height; j++)
             {
-                for (int j = 0; j < bitmap.Width; j++)
+                for (int i = 0; i < bitmap.Width; i++)
                 {
                     Color pixel = bitmap.GetPixel(i, j);
                     double tempY = KR * pixel.R + KG * pixel.G + KB * pixel.B;
@@ -729,9 +751,9 @@ namespace ImageCompressionJMPEG
             int index = 0;
             Color[] pixels = new Color[yCrCb.Y.Length];
             
-            for (int i = 0; i < height; i++)
+            for (int j = 0; j < height; j++)
             {
-                for (int j = 0; j < width; j++)
+                for (int i = 0; i < width; i++)
                 {
                     double tempR = yCrCb.Y[index] + 1.402 * (yCrCb.Cr[index] - 128.0);
                     double tempG = yCrCb.Y[index] - 0.344136 * (yCrCb.Cb[index] - 128.0) -
@@ -877,10 +899,10 @@ namespace ImageCompressionJMPEG
         {
             int numOfBlockRow = (int)Math.Ceiling((height / 8.0));
             int numOfBlockColumn = (int)Math.Ceiling(width / 8.0);
-            int reducedWidth = (int)Math.Ceiling(height / 2.0);
-            int reducedHeight = (int)Math.Ceiling(width / 2.0);
-            int reducedNumOfBlockRow = (int)Math.Ceiling(reducedWidth / 8.0);
-            int reducedNumOfBlockColumn = (int)Math.Ceiling(reducedHeight / 8.0);
+            int reducedWidth = (int)Math.Ceiling(width / 2.0);
+            int reducedHeight = (int)Math.Ceiling(height / 2.0);
+            int reducedNumOfBlockRow = (int)Math.Ceiling(reducedHeight / 8.0);
+            int reducedNumOfBlockColumn = (int)Math.Ceiling(reducedWidth / 8.0);
             double[] modY = BlockTransform(ArrayTransform.byteArrayToDouble(yCrCb.Y),
                 numOfBlockRow, numOfBlockColumn, width, height);
             double[] modCr = BlockTransform(ArrayTransform.byteArrayToDouble(yCrCb.Cr),
@@ -895,10 +917,10 @@ namespace ImageCompressionJMPEG
         {
             int numOfBlockRow = (int)(height / 8.0);
             int numOfBlockColumn = (int)(width / 8.0);
-            int reducedWidth = (int)(height / 2.0);
-            int reducedHeight = (int)(width / 2.0);
-            int reducedNumOfBlockRow = (int)(reducedWidth / 8.0);
-            int reducedNumOfBlockColumn = (int)(reducedHeight / 8.0);
+            int reducedWidth = (int)(width / 2.0);
+            int reducedHeight = (int)(height / 2.0);
+            int reducedNumOfBlockRow = (int)(reducedHeight / 8.0);
+            int reducedNumOfBlockColumn = (int)(reducedWidth / 8.0);
             double[] modY = BlockTransform(yCrCb.Y, numOfBlockRow, numOfBlockColumn, width, height);
             double[] modCr = BlockTransform(yCrCb.Cr, reducedNumOfBlockRow, reducedNumOfBlockColumn, reducedWidth, reducedHeight);
             double[] modCb = BlockTransform(yCrCb.Cb, reducedNumOfBlockRow, reducedNumOfBlockColumn, reducedWidth, reducedHeight);
@@ -917,10 +939,10 @@ namespace ImageCompressionJMPEG
         {
             int numOfBlockRow = (int)Math.Ceiling((height / 8.0));
             int numOfBlockColumn = (int)Math.Ceiling(width / 8.0);
-            int reducedWidth = (int)Math.Ceiling(height / 2.0);
-            int reducedHeight = (int)Math.Ceiling(width / 2.0);
-            int reducedNumOfBlockRow = (int)Math.Ceiling(reducedWidth / 8.0);
-            int reducedNumOfBlockColumn = (int)Math.Ceiling(reducedHeight / 8.0);
+            int reducedWidth = (int)Math.Ceiling(width / 2.0);
+            int reducedHeight = (int)Math.Ceiling(height / 2.0);
+            int reducedNumOfBlockRow = (int)Math.Ceiling(reducedHeight / 8.0);
+            int reducedNumOfBlockColumn = (int)Math.Ceiling(reducedWidth / 8.0);
             double[] modY = InverseBlockTransform(yCrCb.Y, numOfBlockRow, numOfBlockColumn,
                 width, height);
             double[] modCr = InverseBlockTransform(yCrCb.Cr, reducedNumOfBlockRow, reducedNumOfBlockColumn,
@@ -937,10 +959,10 @@ namespace ImageCompressionJMPEG
         {
             int numOfBlockRow = (int)Math.Ceiling((height / 8.0));
             int numOfBlockColumn = (int)Math.Ceiling(width / 8.0);
-            int reducedWidth = (int)Math.Ceiling(height / 2.0);
-            int reducedHeight = (int)Math.Ceiling(width / 2.0);
-            int reducedNumOfBlockRow = (int)Math.Ceiling(reducedWidth / 8.0);
-            int reducedNumOfBlockColumn = (int)Math.Ceiling(reducedHeight / 8.0);
+            int reducedWidth = (int)Math.Ceiling(width / 2.0);
+            int reducedHeight = (int)Math.Ceiling(height / 2.0);
+            int reducedNumOfBlockRow = (int)Math.Ceiling(reducedHeight / 8.0);
+            int reducedNumOfBlockColumn = (int)Math.Ceiling(reducedWidth / 8.0);
             double[] modY = InverseBlockTransform(yCrCb.Y, numOfBlockRow, numOfBlockColumn,
                 width, height);
             double[] modCr = InverseBlockTransform(yCrCb.Cr, reducedNumOfBlockRow, reducedNumOfBlockColumn,
@@ -1032,38 +1054,38 @@ namespace ImageCompressionJMPEG
             double[] result = new double[channel.Length];
             for (int block = 0; block < numOfblock; block++)
             {
-                for (int u = 0; u < blockSize && (u + currentBlockRow * blockSize) < height; u++)
+                for (int v = 0; v < blockSize && (v + currentBlockRow * blockSize) < height; v++)
                 {
-                    if (u == 0)
+                    if (v == 0)
                     {
-                        cu = C_ZERO;
+                        cv = C_ZERO;
                     }
                     else
                     {
-                        cu = C_NONZERO;
+                        cv = C_NONZERO;
                     }
-                    for (int v = 0; v < blockSize && v + currentBlockColumn * blockSize < width; v++)
+                    for (int u = 0; u < blockSize && u + currentBlockColumn * blockSize < width; u++)
                     {
-                        if (v == 0)
+                        if (u == 0)
                         {
-                            cv = C_ZERO;
+                            cu = C_ZERO;
                         }
                         else
                         {
-                            cv = C_NONZERO;
+                            cu = C_NONZERO;
                         }
-                        for (int x = 0; x < blockSize && x + currentBlockRow * blockSize < height; x++)
+                        for (int y = 0; y < blockSize && y + currentBlockRow * blockSize < height; y++)
                         {
-                            for ( int y = 0; y < blockSize && y + currentBlockColumn * blockSize < width; y++)
+                            for (int x = 0; x < blockSize && x + currentBlockColumn * blockSize < width; x++)
                             {
-                                tempResult += channel[(x + currentBlockRow * blockSize) *
-                                    width + (y + currentBlockColumn * blockSize)] *
+                                tempResult += channel[(y + currentBlockRow * blockSize) *
+                                    width + (x + currentBlockColumn * blockSize)] *
                                     Math.Cos((2.0 * x + 1.0) * u * Math.PI / (2.0 * blockSize)) *
                                     Math.Cos((2.0 * y + 1.0) * v * Math.PI / (2.0 * blockSize));
                             }
                         }
                         tempResult *= (2.0 * cu * cv / Math.Sqrt(blockSize * blockSize));
-                        result[(u + currentBlockRow * blockSize) * width + v + currentBlockColumn * blockSize] = tempResult;
+                        result[(v + currentBlockRow * blockSize) * width + u + currentBlockColumn * blockSize] = tempResult;
                         tempResult = 0;
                     }
                 }
@@ -1091,40 +1113,40 @@ namespace ImageCompressionJMPEG
             double[] result = new double[channel.Length];
             for (int block = 0; block < numOfblock; block++)
             {
-                for (int x = 0; x < blockSize && x + currentBlockRow * blockSize < height; x++)
+                for (int y = 0; y < blockSize && y + currentBlockRow * blockSize < height; y++)
                 {
 
-                    for (int y = 0; y < blockSize && y + currentBlockColumn * blockSize < width; y++)
+                    for (int x = 0; x < blockSize && x + currentBlockColumn * blockSize < width; x++)
                     {
 
-                        for (int u = 0; u < blockSize && u + currentBlockRow * blockSize < height; u++)
+                        for (int v = 0; v < blockSize && v + currentBlockRow * blockSize < height; v++)
                         {
-                            if (u == 0)
+                            if (v == 0)
                             {
-                                cu = C_ZERO;
+                                cv = C_ZERO;
                             }
                             else
                             {
-                                cu = C_NONZERO;
+                                cv = C_NONZERO;
                             }
-                            for (int v = 0; v < blockSize && v + currentBlockColumn * blockSize < width; v++)
+                            for (int u = 0; u < blockSize && u + currentBlockColumn * blockSize < width; u++)
                             {
-                                if (v == 0)
+                                if (u == 0)
                                 {
-                                    cv = C_ZERO;
+                                    cu = C_ZERO;
                                 }
                                 else
                                 {
-                                    cv = C_NONZERO;
+                                    cu = C_NONZERO;
                                 }
-                                tempResult += channel[(u + currentBlockRow * blockSize) * width +
-                                    (v + currentBlockColumn * blockSize)] *
+                                tempResult += channel[(v + currentBlockRow * blockSize) * width +
+                                    (u + currentBlockColumn * blockSize)] *
                                     Math.Cos((2.0 * x + 1.0) * u * Math.PI / (2.0 * blockSize)) *
                                     Math.Cos((2.0 * y + 1.0) * v * Math.PI / (2.0 * blockSize)) *
                                     (2.0 * cu * cv / Math.Sqrt(blockSize * blockSize));
                             }
                         }
-                        result[(x + currentBlockRow * blockSize) * width + y + currentBlockColumn * blockSize] = tempResult;
+                        result[(y + currentBlockRow * blockSize) * width + x + currentBlockColumn * blockSize] = tempResult;
                         tempResult = 0;
                     }
                 }
