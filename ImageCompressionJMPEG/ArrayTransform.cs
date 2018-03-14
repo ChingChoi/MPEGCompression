@@ -49,50 +49,58 @@ namespace ImageCompressionJMPEG
             return byteArray;
         }
 
-        public static YCrCb padChannels(YCrCb subYCrCb)
+        public static YCrCb padChannels(YCrCb subYCrCb, int divider)
         {
-            if (subYCrCb.yWidth % 8 != 0 || subYCrCb.yHeight % 8 != 0)
+            if (subYCrCb.yWidth % divider != 0 || subYCrCb.yHeight % divider != 0)
             {
                 int rightPad = subYCrCb.yWidth % 8;
                 int bottomPad = subYCrCb.yHeight % 8;
-                subYCrCb.Y = padChannel(subYCrCb.Y, subYCrCb.yWidth, subYCrCb.yHeight);
+                subYCrCb.Y = padChannel(subYCrCb.Y, subYCrCb.yWidth, subYCrCb.yHeight, divider);
                 subYCrCb.yWidth += rightPad;
                 subYCrCb.yHeight += bottomPad;
             }
             if ((int)Math.Ceiling(Compression.originalWidth / 2.0) % 8 != 0 || (int)Math.Ceiling(Compression.originalHeight / 2.0) % 8 != 0)
             {
-                subYCrCb.Cr = padChannel(subYCrCb.Cr, (int)Math.Ceiling(Compression.originalWidth / 2.0), (int)Math.Ceiling(Compression.originalHeight / 2.0));
-                subYCrCb.Cb = padChannel(subYCrCb.Cb, (int)Math.Ceiling(Compression.originalWidth / 2.0), (int)Math.Ceiling(Compression.originalHeight / 2.0));
-                subYCrCb.crCbWidth += (int)Math.Ceiling(Compression.originalWidth / 2.0) % 8;
-                subYCrCb.crCbHeight += (int)Math.Ceiling(Compression.originalHeight / 2.0) % 8;
+                subYCrCb.Cr = padChannel(subYCrCb.Cr, (int)Math.Ceiling(Compression.originalWidth / 2.0), (int)Math.Ceiling(Compression.originalHeight / 2.0), divider);
+                subYCrCb.Cb = padChannel(subYCrCb.Cb, (int)Math.Ceiling(Compression.originalWidth / 2.0), (int)Math.Ceiling(Compression.originalHeight / 2.0), divider);
+                subYCrCb.crCbWidth += (int)Math.Ceiling(Compression.originalWidth / 2.0) % divider;
+                subYCrCb.crCbHeight += (int)Math.Ceiling(Compression.originalHeight / 2.0) % divider;
             }
             return subYCrCb;
         }
 
-        public static YCrCb unpadChannels(YCrCb iYCrCb)
+        public static YCrCb unpadChannels(YCrCb iYCrCb, int divider)
         {
             if (Compression.originalWidth % 8 != 0 || Compression.originalHeight % 8 != 0)
             {
                 int rightPad = Compression.originalWidth % 8;
                 int bottomPad = Compression.originalHeight % 8;
-                iYCrCb.Y = unpadChannel(iYCrCb.Y, Compression.originalWidth, Compression.originalHeight);
+                iYCrCb.Y = unpadChannel(iYCrCb.Y, Compression.originalWidth, Compression.originalHeight, divider);
                 iYCrCb.yWidth -= rightPad;
                 iYCrCb.yHeight -= bottomPad;
             }
             if ((int)Math.Ceiling(Compression.originalWidth / 2.0) % 8 != 0 || (int)Math.Ceiling(Compression.originalHeight / 2.0) % 8 != 0)
             {
-                iYCrCb.Cr = unpadChannel(iYCrCb.Cr, (int)Math.Ceiling(Compression.originalWidth / 2.0), (int)Math.Ceiling(Compression.originalHeight / 2.0));
-                iYCrCb.Cb = unpadChannel(iYCrCb.Cb, (int)Math.Ceiling(Compression.originalWidth / 2.0), (int)Math.Ceiling(Compression.originalHeight / 2.0));
+                iYCrCb.Cr = unpadChannel(iYCrCb.Cr, (int)Math.Ceiling(Compression.originalWidth / 2.0), (int)Math.Ceiling(Compression.originalHeight / 2.0), divider);
+                iYCrCb.Cb = unpadChannel(iYCrCb.Cb, (int)Math.Ceiling(Compression.originalWidth / 2.0), (int)Math.Ceiling(Compression.originalHeight / 2.0), divider);
                 iYCrCb.crCbWidth = (int)Math.Ceiling(Compression.originalWidth / 2.0);
                 iYCrCb.crCbHeight = (int)Math.Ceiling(Compression.originalHeight / 2.0);
             }
             return iYCrCb;
         }
 
-        public static byte[] padChannel(byte[] channel, int width, int height)
+        /// <summary>
+        /// Pad channel to be divisible by divider
+        /// </summary>
+        /// <param name="channel">input channel</param>
+        /// <param name="width">channel width</param>
+        /// <param name="height">channel height</param>
+        /// <param name="divider">divider</param>
+        /// <returns></returns>
+        public static byte[] padChannel(byte[] channel, int width, int height, int divider)
         {
-            int rightPad = width % 8;
-            int bottomPad = height % 8;
+            int rightPad = width % divider;
+            int bottomPad = height % divider;
             byte[] paddedChannel = new byte[(width + rightPad) * (height + bottomPad)];
             int padIndex = 0;
             int channelIndex = 0;
@@ -113,10 +121,18 @@ namespace ImageCompressionJMPEG
             return paddedChannel;
         }
 
-        public static byte[] unpadChannel(byte[] paddedChannel, int width, int height)
+        /// <summary>
+        /// Unpad a channel to original width and height
+        /// </summary>
+        /// <param name="paddedChannel">padded channel</param>
+        /// <param name="width">original channel width</param>
+        /// <param name="height">original channel height</param>
+        /// <param name="divider">divider</param>
+        /// <returns></returns>
+        public static byte[] unpadChannel(byte[] paddedChannel, int width, int height, int divider)
         {
-            int rightPad = width % 8;
-            int bottomPad = height % 8;
+            int rightPad = width % divider;
+            int bottomPad = height % divider;
             byte[] unpaddedChannel = new byte[width * height];
             int unpadIndex = 0;
             int channelIndex = 0;
@@ -134,6 +150,11 @@ namespace ImageCompressionJMPEG
             return unpaddedChannel;
         }
 
+        /// <summary>
+        /// Increases the capacity of input byte array to twice its original
+        /// </summary>
+        /// <param name="input">input byte array</param>
+        /// <returns>byte array with twice the capacity</returns>
         public static byte[] increaseCapacity(byte[] input)
         {
             byte[] output = new byte[input.Length * 2];

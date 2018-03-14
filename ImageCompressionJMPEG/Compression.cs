@@ -288,13 +288,14 @@ namespace ImageCompressionJMPEG
         /// <returns></returns>
         public static Bitmap JPEGCompression(Bitmap bitmap, int width, int height)
         {
+            int divider = 8;
             originalHeight = height;
             originalWidth = width;
             currentQuantizationTable = quantizationTableJPEG;
             // compressing
             YCrCb yCrCb = convertToYCrCb(bitmap);
             YCrCb subYCrCb = subSample(yCrCb);
-            subYCrCb = ArrayTransform.padChannels(subYCrCb);
+            subYCrCb = ArrayTransform.padChannels(subYCrCb, divider);
             DYCrCb dctYCrCb = DiscreteCosineTransform(subYCrCb);
             YCrCb qYCrCb = QuantizationAndZigzag(dctYCrCb);
             // saving
@@ -303,7 +304,7 @@ namespace ImageCompressionJMPEG
             // reverse progress for display purpose
             DYCrCb iQYCrCb = InverseQuantizationAndZigzag(qYCrCb);
             YCrCb iYCrCb = InverseDiscreteCosineTransform(iQYCrCb);
-            iYCrCb = ArrayTransform.unpadChannels(iYCrCb);
+            iYCrCb = ArrayTransform.unpadChannels(iYCrCb, divider);
             YCrCb fillediYCrCb = fillSubSample(iYCrCb);
             Bitmap result = convertToBitmap(fillediYCrCb);
             return result;
@@ -316,6 +317,7 @@ namespace ImageCompressionJMPEG
         /// <returns></returns>
         public static Bitmap JPEGDecompression(byte[] inputArray)
         {
+            int divider = 8;
             currentQuantizationTable = quantizationTableJPEG;
             SaveAndLoad.JPEGSaveInfo jpegSaveInfo = SaveAndLoad.loadByteArray(inputArray);
             originalHeight = jpegSaveInfo.originalHeight;
@@ -323,7 +325,7 @@ namespace ImageCompressionJMPEG
             YCrCb qYCrCb = jpegSaveInfo.qYCrCb;
             DYCrCb iQYCrCb = InverseQuantizationAndZigzag(qYCrCb);
             YCrCb iYCrCb = InverseDiscreteCosineTransform(iQYCrCb);
-            iYCrCb = ArrayTransform.unpadChannels(iYCrCb);
+            iYCrCb = ArrayTransform.unpadChannels(iYCrCb, divider);
             YCrCb fillediYCrCb = fillSubSample(iYCrCb);
             Bitmap result = convertToBitmap(fillediYCrCb);
             return result;
