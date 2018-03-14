@@ -98,7 +98,7 @@ namespace ImageCompressionJMPEG
             byte current = 0;
             byte runLength = 0;
 
-            byte[] temp = new byte[compressedBuffer.Length * 10];
+            byte[] temp = new byte[compressedBuffer.Length * 2];
 
             for (int i = 0; i < compressedBuffer.Length; i++)
             {
@@ -115,6 +115,10 @@ namespace ImageCompressionJMPEG
                         for (int j = 0; j < runLength; j++)
                         {
                             temp[count++] = compressedBuffer[currentPosC];
+                            if (count == temp.Length)
+                            {
+                                temp = ArrayTransform.increaseCapacity(temp);
+                            }
                         }
                         currentPosC++;
                     }

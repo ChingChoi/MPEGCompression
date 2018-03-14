@@ -134,5 +134,11 @@ namespace ImageCompressionJMPEG
             return unpaddedChannel;
         }
 
+        public static byte[] increaseCapacity(byte[] input)
+        {
+            byte[] output = new byte[input.Length * 2];
+            System.Buffer.BlockCopy(input, 0, output, 0, input.Length);
+            return output;
+        }
     }
 }

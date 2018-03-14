@@ -224,7 +224,7 @@ namespace ImageCompressionJMPEG
         /// <summary>
         /// Byte array size after converting from an int
         /// </summary>
-        static int intToByteSize = 4;
+        public static int intToByteSize = 4;
 
         /// <summary>
         /// Enable or disable zigzag
@@ -291,29 +291,21 @@ namespace ImageCompressionJMPEG
             originalHeight = height;
             originalWidth = width;
             currentQuantizationTable = quantizationTableJPEG;
+            // compressing
             YCrCb yCrCb = convertToYCrCb(bitmap);
             YCrCb subYCrCb = subSample(yCrCb);
             subYCrCb = ArrayTransform.padChannels(subYCrCb);
-
             DYCrCb dctYCrCb = DiscreteCosineTransform(subYCrCb);
             YCrCb qYCrCb = QuantizationAndZigzag(dctYCrCb);
+            // saving
+            SaveAndLoad.JPEGSaveInfo jpegSaveInfo = new SaveAndLoad.JPEGSaveInfo(originalWidth, originalHeight, qYCrCb);
+            compressedByteArray = SaveAndLoad.saveIntoByteArray(jpegSaveInfo);
+            // reverse progress for display purpose
             DYCrCb iQYCrCb = InverseQuantizationAndZigzag(qYCrCb);
             YCrCb iYCrCb = InverseDiscreteCosineTransform(iQYCrCb);
-
             iYCrCb = ArrayTransform.unpadChannels(iYCrCb);
-
             YCrCb fillediYCrCb = fillSubSample(iYCrCb);
-            byte[] widthByteArray = BitConverter.GetBytes(originalWidth);
-            byte[] heightByteArray = BitConverter.GetBytes(originalHeight);
-
-            int backWidth = BitConverter.ToInt32(widthByteArray, 0);
-            int backHeight = BitConverter.ToInt32(widthByteArray, 0);
-
             Bitmap result = convertToBitmap(fillediYCrCb);
-            
-            SaveAndLoad.JPEGSaveInfo jpegSaveInfo = new SaveAndLoad.JPEGSaveInfo(widthByteArray, heightByteArray, qYCrCb);
-            compressedByteArray = SaveAndLoad.prepareSave(jpegSaveInfo);
-
             return result;
         }
 
@@ -325,29 +317,13 @@ namespace ImageCompressionJMPEG
         public static Bitmap JPEGDecompression(byte[] inputArray)
         {
             currentQuantizationTable = quantizationTableJPEG;
-            inputArray = RLCompression.ModifiedRunLengthDecompress(inputArray);
-            byte[] widthByteArray = new byte[intToByteSize];
-            byte[] heightByteArray = new byte[intToByteSize];
-            System.Buffer.BlockCopy(inputArray, 0, widthByteArray, 0, intToByteSize);
-            System.Buffer.BlockCopy(inputArray, intToByteSize, heightByteArray, 0, intToByteSize);
-
-            int width = BitConverter.ToInt32(widthByteArray, 0);
-            int height = BitConverter.ToInt32(widthByteArray, 0);
-            int reducedWidth = (int)(((double)width / 2.0));
-            int reducedHeight = (int)(((double)height / 2.0));
-
-            byte[] qY = new byte[width * height];
-            byte[] qCr = new byte[reducedWidth * reducedHeight];
-            byte[] qCb = new byte[reducedWidth * reducedHeight];
-
-            System.Buffer.BlockCopy(inputArray, intToByteSize * 2, qY, 0, qY.Length);
-            System.Buffer.BlockCopy(inputArray, intToByteSize * 2 + qY.Length,
-                                    qCr, 0, qCr.Length);
-            System.Buffer.BlockCopy(inputArray, intToByteSize * 2 + qY.Length +
-                                    qCr.Length, qCb, 0, qCb.Length);
-            YCrCb qYCrCb = new YCrCb(qY, qCr, qCb, height, width, reducedHeight, reducedWidth);
+            SaveAndLoad.JPEGSaveInfo jpegSaveInfo = SaveAndLoad.loadByteArray(inputArray);
+            originalHeight = jpegSaveInfo.originalHeight;
+            originalWidth = jpegSaveInfo.originalWidth;
+            YCrCb qYCrCb = jpegSaveInfo.qYCrCb;
             DYCrCb iQYCrCb = InverseQuantizationAndZigzag(qYCrCb);
             YCrCb iYCrCb = InverseDiscreteCosineTransform(iQYCrCb);
+            iYCrCb = ArrayTransform.unpadChannels(iYCrCb);
             YCrCb fillediYCrCb = fillSubSample(iYCrCb);
             Bitmap result = convertToBitmap(fillediYCrCb);
             return result;
