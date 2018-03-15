@@ -49,40 +49,74 @@ namespace ImageCompressionJMPEG
             return byteArray;
         }
 
-        public static YCrCb padChannels(YCrCb subYCrCb, int divider)
+        public static YCrCb padChannels(YCrCb subYCrCb, int yDivider, int crCbDivider)
         {
-            if (subYCrCb.yWidth % divider != 0 || subYCrCb.yHeight % divider != 0)
+            if (subYCrCb.yWidth % yDivider != 0 || subYCrCb.yHeight % yDivider != 0)
             {
-                int rightPad = subYCrCb.yWidth % 8;
-                int bottomPad = subYCrCb.yHeight % 8;
-                subYCrCb.Y = padChannel(subYCrCb.Y, subYCrCb.yWidth, subYCrCb.yHeight, divider);
+                int rightPad = 0;
+                if (subYCrCb.yWidth % yDivider != 0)
+                {
+                    rightPad = yDivider - (subYCrCb.yWidth % yDivider);
+                }
+                int bottomPad = 0;
+                if (subYCrCb.yHeight % yDivider != 0)
+                {
+                    bottomPad = yDivider - (subYCrCb.yHeight % yDivider);
+                }
+                subYCrCb.Y = padChannel(subYCrCb.Y, subYCrCb.yWidth, subYCrCb.yHeight, yDivider);
                 subYCrCb.yWidth += rightPad;
                 subYCrCb.yHeight += bottomPad;
             }
-            if ((int)Math.Ceiling(Compression.originalWidth / 2.0) % 8 != 0 || (int)Math.Ceiling(Compression.originalHeight / 2.0) % 8 != 0)
+            if ((int)Math.Ceiling(Compression.originalWidth / 2.0) % crCbDivider != 0 || 
+                (int)Math.Ceiling(Compression.originalHeight / 2.0) % crCbDivider != 0)
             {
-                subYCrCb.Cr = padChannel(subYCrCb.Cr, (int)Math.Ceiling(Compression.originalWidth / 2.0), (int)Math.Ceiling(Compression.originalHeight / 2.0), divider);
-                subYCrCb.Cb = padChannel(subYCrCb.Cb, (int)Math.Ceiling(Compression.originalWidth / 2.0), (int)Math.Ceiling(Compression.originalHeight / 2.0), divider);
-                subYCrCb.crCbWidth += (int)Math.Ceiling(Compression.originalWidth / 2.0) % divider;
-                subYCrCb.crCbHeight += (int)Math.Ceiling(Compression.originalHeight / 2.0) % divider;
+                subYCrCb.Cr = padChannel(subYCrCb.Cr, 
+                    (int)Math.Ceiling(Compression.originalWidth / 2.0), 
+                    (int)Math.Ceiling(Compression.originalHeight / 2.0), crCbDivider);
+                subYCrCb.Cb = padChannel(subYCrCb.Cb, 
+                    (int)Math.Ceiling(Compression.originalWidth / 2.0), 
+                    (int)Math.Ceiling(Compression.originalHeight / 2.0), crCbDivider);
+                if ((int) Math.Ceiling(Compression.originalWidth / 2.0) % crCbDivider != 0)
+                {
+                    subYCrCb.crCbWidth += crCbDivider - ((int)Math.Ceiling(Compression.originalWidth / 2.0) % crCbDivider);
+                }
+                if ((int)Math.Ceiling(Compression.originalHeight / 2.0) % crCbDivider != 0)
+                {
+                    subYCrCb.crCbHeight += crCbDivider - ((int)Math.Ceiling(Compression.originalHeight / 2.0) % crCbDivider);
+                }
             }
             return subYCrCb;
         }
 
-        public static YCrCb unpadChannels(YCrCb iYCrCb, int divider)
+        public static YCrCb unpadChannels(YCrCb iYCrCb, int yDivider, int crCbDivider)
         {
-            if (Compression.originalWidth % 8 != 0 || Compression.originalHeight % 8 != 0)
+            if (Compression.originalWidth % yDivider != 0 
+                || Compression.originalHeight % yDivider != 0)
             {
-                int rightPad = Compression.originalWidth % 8;
-                int bottomPad = Compression.originalHeight % 8;
-                iYCrCb.Y = unpadChannel(iYCrCb.Y, Compression.originalWidth, Compression.originalHeight, divider);
+                int rightPad = 0;
+                if (Compression.originalWidth % yDivider != 0)
+                {
+                    rightPad = yDivider - (Compression.originalWidth % yDivider);
+                }
+                int bottomPad = 0;
+                if (Compression.originalHeight % yDivider != 0)
+                {
+                    bottomPad = yDivider - (Compression.originalHeight % yDivider);
+                }
+                iYCrCb.Y = unpadChannel(iYCrCb.Y, Compression.originalWidth, 
+                    Compression.originalHeight, yDivider);
                 iYCrCb.yWidth -= rightPad;
                 iYCrCb.yHeight -= bottomPad;
             }
-            if ((int)Math.Ceiling(Compression.originalWidth / 2.0) % 8 != 0 || (int)Math.Ceiling(Compression.originalHeight / 2.0) % 8 != 0)
+            if ((int)Math.Ceiling(Compression.originalWidth / 2.0) % crCbDivider != 0 ||
+                (int)Math.Ceiling(Compression.originalHeight / 2.0) % crCbDivider != 0)
             {
-                iYCrCb.Cr = unpadChannel(iYCrCb.Cr, (int)Math.Ceiling(Compression.originalWidth / 2.0), (int)Math.Ceiling(Compression.originalHeight / 2.0), divider);
-                iYCrCb.Cb = unpadChannel(iYCrCb.Cb, (int)Math.Ceiling(Compression.originalWidth / 2.0), (int)Math.Ceiling(Compression.originalHeight / 2.0), divider);
+                iYCrCb.Cr = unpadChannel(iYCrCb.Cr, 
+                    (int)Math.Ceiling(Compression.originalWidth / 2.0), 
+                    (int)Math.Ceiling(Compression.originalHeight / 2.0), crCbDivider);
+                iYCrCb.Cb = unpadChannel(iYCrCb.Cb, 
+                    (int)Math.Ceiling(Compression.originalWidth / 2.0), 
+                    (int)Math.Ceiling(Compression.originalHeight / 2.0), crCbDivider);
                 iYCrCb.crCbWidth = (int)Math.Ceiling(Compression.originalWidth / 2.0);
                 iYCrCb.crCbHeight = (int)Math.Ceiling(Compression.originalHeight / 2.0);
             }
@@ -99,8 +133,16 @@ namespace ImageCompressionJMPEG
         /// <returns></returns>
         public static byte[] padChannel(byte[] channel, int width, int height, int divider)
         {
-            int rightPad = width % divider;
-            int bottomPad = height % divider;
+            int rightPad = 0;
+            if (width % divider != 0)
+            {
+                rightPad = divider - (width % divider);
+            }
+            int bottomPad = 0;
+            if (height % divider != 0)
+            {
+                bottomPad = divider - (height % divider);
+            }
             byte[] paddedChannel = new byte[(width + rightPad) * (height + bottomPad)];
             int padIndex = 0;
             int channelIndex = 0;
@@ -131,8 +173,16 @@ namespace ImageCompressionJMPEG
         /// <returns></returns>
         public static byte[] unpadChannel(byte[] paddedChannel, int width, int height, int divider)
         {
-            int rightPad = width % divider;
-            int bottomPad = height % divider;
+            int rightPad = 0;
+            if (width % divider != 0)
+            {
+                rightPad = divider - (width % divider);
+            }
+            int bottomPad = 0;
+            if (height % divider != 0)
+            {
+                bottomPad = divider - (height % divider);
+            }
             byte[] unpaddedChannel = new byte[width * height];
             int unpadIndex = 0;
             int channelIndex = 0;

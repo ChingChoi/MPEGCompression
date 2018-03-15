@@ -1,0 +1,40 @@
+mpeg is not reflecting padding of jpeg at the moment
+===============================================================
+
+Reference JPEGed bitmap
+
+- RGB -> YCrCb
+- YCrCb -> subYCrCb 
+
+300 300
+150 150
+150 150
+
+- pad(subYCrCb)   // ready to be compared for motion vector
+
+304 304
+152 152
+152 152
+
+Current original bitmap
+
+- RGB -> YCrCb
+- YCrCb -> subYCrCb 
+
+300 300
+150 150
+150 150
+
+- pad(subYCrCb)   // ready to be compared for motion vector
+
+304 304
+152 152
+152 152
+
+Do motion vectors
+
+Differences block for all channels
+motion vectors for all channels
+
+save everything
+

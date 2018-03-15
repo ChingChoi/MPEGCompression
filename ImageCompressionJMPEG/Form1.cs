@@ -34,7 +34,8 @@ namespace ImageCompressionJMPEG
         private PictureBox pictureBoxOne;
         private PictureBox pictureBoxTwo;
         private PictureBox pictureBoxThree;
-        private PictureBox[] pictureBoxFrames;
+        private PictureBox pictureBoxGrayscaleLeft;
+        private PictureBox pictureBoxGrayscaleRight;
         private bool addToOne = true;
         private Panel panel;
         Panel motionVectorInfoPanel;
@@ -46,6 +47,7 @@ namespace ImageCompressionJMPEG
         private CustomButton subtractSearchAreaRange;
         private CustomButton jpegView;
         private CustomButton mpegView;
+        private CustomButton grayscaleView;
         private Bitmap compressedBitmap;
         private byte[] compressedByteArray;
         private Color themeColor;
@@ -99,23 +101,14 @@ namespace ImageCompressionJMPEG
                 pictureBoxTwo.Size = new Size(w / 2 - PICTUREBOX_OFFSET * 3 / 2, h - 54 - PICTUREBOX_OFFSET * 2);
                 pictureBoxTwo.Location = new Point(w / 2 + PICTUREBOX_OFFSET / 2, 27 + PICTUREBOX_OFFSET);
                 pictureBoxThree.Size = new Size(w - PICTUREBOX_OFFSET * 2, h - 54 - PICTUREBOX_OFFSET * 3);
-                //                pictureBoxThree.Location = new Point(w / 2 - pictureBoxThree.Size.Width / 2, 27 + PICTUREBOX_OFFSET);
                 pictureBoxThree.Location = new Point(PICTUREBOX_OFFSET, 27 + PICTUREBOX_OFFSET);
+                pictureBoxGrayscaleLeft.Size = new Size(w / 2 - PICTUREBOX_OFFSET * 3 / 2, h - 54 - PICTUREBOX_OFFSET * 2);
+                pictureBoxGrayscaleRight.Size = new Size(w / 2 - PICTUREBOX_OFFSET * 3 / 2, h - 54 - PICTUREBOX_OFFSET * 2);
+                pictureBoxGrayscaleRight.Location = new Point(w / 2 + PICTUREBOX_OFFSET / 2, 27 + PICTUREBOX_OFFSET);
                 motionVectorInfoPanel.Width = w;
+                grayscaleView.Location = new System.Drawing.Point(motionVectorInfoPanel.Size.Width - LABEL_SIZE * 3 - PICTUREBOX_OFFSET, BUTTON_GAP);
                 jpegView.Location = new Point(motionVectorInfoPanel.Size.Width - LABEL_SIZE * 2 - PICTUREBOX_OFFSET, BUTTON_GAP);
                 mpegView.Location = new System.Drawing.Point(motionVectorInfoPanel.Size.Width - LABEL_SIZE - PICTUREBOX_OFFSET, BUTTON_GAP);
-                for (int i = 0; i < pictureBoxFrames.Length; i++)
-                {
-                    pictureBoxFrames[i].Size = new Size(pictureBoxThree.Size.Width / 3, pictureBoxThree.Size.Height / 3);
-                    if (i < 3)
-                    {
-                        pictureBoxFrames[i].Location = new Point(PICTUREBOX_OFFSET, 27 + PICTUREBOX_OFFSET + i * pictureBoxFrames[i].Size.Height);
-                    }
-                    else
-                    {
-                        pictureBoxFrames[i].Location = new Point(motionVectorInfoPanel.Size.Width - PICTUREBOX_OFFSET - pictureBoxFrames[i].Size.Width, 27 + PICTUREBOX_OFFSET + (i - 3) * pictureBoxFrames[i].Size.Height);
-                    }
-                }
             }
         }
 
@@ -168,12 +161,6 @@ namespace ImageCompressionJMPEG
                     {
                         pictureBoxThree.Image = null;
                         pictureBoxThree.Image = new Bitmap(dialog.FileNames[0]);
-
-                        for (int i = 0; i < dialog.FileNames.Length && i < pictureBoxFrames.Length; i++)
-                        {
-                            pictureBoxFrames[i].Image = null;
-                            pictureBoxFrames[i].Image = new Bitmap(dialog.FileNames[i]);
-                        }
                     }
                     Refresh();
                 }
@@ -233,10 +220,6 @@ namespace ImageCompressionJMPEG
         private void removeImageThree(object sender, EventArgs e)
         {
             pictureBoxThree.Image = null;
-            for (int i = 0; i < pictureBoxFrames.Length; i++)
-            {
-                pictureBoxFrames[i].Image = null;
-            }
         }
 
         private void initializeCustom()
@@ -273,17 +256,22 @@ namespace ImageCompressionJMPEG
             pictureBoxThree.BackColor = themeBackgroundColorTwo;
             pictureBoxThree.SizeMode = PictureBoxSizeMode.StretchImage;
             //
-            // pictureBoxFrames
+            // pictureBoxGrayScaleLeft
             //
-            pictureBoxFrames = new PictureBox[NUM_DISPLAY_FRAME];
-            for (int i = 0; i < pictureBoxFrames.Length; i++)
-            {
-                pictureBoxFrames[i] = new PictureBox();
-                pictureBoxFrames[i].Name = "frame" + i;
-                pictureBoxFrames[i].TabStop = false;
-                pictureBoxFrames[i].BackColor = themeBackgroundColorTwo;
-                pictureBoxFrames[i].SizeMode = PictureBoxSizeMode.StretchImage;
-            }
+            pictureBoxGrayscaleLeft = new PictureBox();
+            pictureBoxGrayscaleLeft.Location = new System.Drawing.Point(PICTUREBOX_OFFSET, 27 + PICTUREBOX_OFFSET);
+            pictureBoxGrayscaleLeft.Name = "pictureBoxGrayscaleLeft";
+            pictureBoxGrayscaleLeft.TabStop = false;
+            pictureBoxGrayscaleLeft.BackColor = themeBackgroundColorTwo;
+            pictureBoxGrayscaleLeft.SizeMode = PictureBoxSizeMode.StretchImage;
+            //
+            // pictureBoxGrayscaleRight
+            //
+            pictureBoxGrayscaleRight = new PictureBox();
+            pictureBoxGrayscaleRight.Name = "pictureBoxGrayscaleRight";
+            pictureBoxGrayscaleRight.TabStop = false;
+            pictureBoxGrayscaleRight.BackColor = themeBackgroundColorTwo;
+            pictureBoxGrayscaleRight.SizeMode = PictureBoxSizeMode.StretchImage;
             //
             // conext menu for pictureBoxOne
             //
@@ -500,7 +488,24 @@ namespace ImageCompressionJMPEG
             mpegView.BackColor = themeBackgroundColorTwo;
             mpegView.Click += new System.EventHandler(this.mpegView_Click);
             motionVectorInfoPanel.Controls.Add(mpegView);
-
+            //
+            // grayscaleView
+            //
+            grayscaleView = new CustomButton();
+            grayscaleView.BackgroundImageLayout = System.Windows.Forms.ImageLayout.Zoom;
+            grayscaleView.FlatAppearance.BorderSize = 0;
+            grayscaleView.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+            grayscaleView.Font = new System.Drawing.Font("Microsoft Sans Serif", BUTTON_FONT_SIZE, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            grayscaleView.Name = "mpegView";
+            grayscaleView.Size = new System.Drawing.Size(LABEL_SIZE, LABEL_SIZE);
+            grayscaleView.TabStop = false;
+            grayscaleView.Text = "\u0047";
+            grayscaleView.ForeColor = themeColor;
+            grayscaleView.UseMnemonic = false;
+            grayscaleView.UseVisualStyleBackColor = true;
+            grayscaleView.BackColor = themeBackgroundColorTwo;
+            grayscaleView.Click += new System.EventHandler(this.grayscaleView_Click);
+            motionVectorInfoPanel.Controls.Add(grayscaleView);
         }
 
         /// <summary>
@@ -757,12 +762,18 @@ namespace ImageCompressionJMPEG
                 compressedBitmap = Compression.JPEGCompression(bitmapOne, pictureBoxOne.Image.Width, pictureBoxOne.Image.Height);
                 pictureBoxOne.Image = new Bitmap(compressedBitmap);
                 Bitmap bitmapTwo = new Bitmap(pictureBoxTwo.Image);
-                MPEGPrep mPEGPReg = Compression.MPEGMotionVector(compressedBitmap, bitmapTwo);
+                Bitmap grayscaleBitmap;
+                Bitmap grayscaleBitmapTwo;
+                MPEGPrep mPEGPReg = Compression.MPEGMotionVector(compressedBitmap, bitmapTwo, out grayscaleBitmap, out grayscaleBitmapTwo);
                 motionVectors = mPEGPReg.MotionVectorsY;
                 drawMV = true;
                 pictureBoxTwo.Image = null;
                 pictureBoxTwo.Image = new Bitmap(Compression.displayBitmap);
+                pictureBoxGrayscaleLeft.Image = grayscaleBitmap;
+                pictureBoxGrayscaleRight.Image = grayscaleBitmapTwo;
                 pictureBoxTwo.Refresh();
+                pictureBoxGrayscaleLeft.Refresh();
+                pictureBoxGrayscaleRight.Refresh();
             }
         }
 
@@ -826,12 +837,11 @@ namespace ImageCompressionJMPEG
             panel.Controls.Add(pictureBoxOne);
             panel.Controls.Add(pictureBoxTwo);
             panel.Controls.Remove(pictureBoxThree);
-            for (int i = 0; i < pictureBoxFrames.Length; i++)
-            {
-                panel.Controls.Remove(pictureBoxFrames[i]);
-            }
+            panel.Controls.Remove(pictureBoxGrayscaleLeft);
+            panel.Controls.Remove(pictureBoxGrayscaleRight);
             Compression.mView = false;
             Compression.jView = true;
+            Compression.gView = false;
         }
 
         /// <summary>
@@ -844,12 +854,25 @@ namespace ImageCompressionJMPEG
             panel.Controls.Remove(pictureBoxOne);
             panel.Controls.Remove(pictureBoxTwo);
             panel.Controls.Add(pictureBoxThree);
-            for (int i = 0; i < pictureBoxFrames.Length; i++)
-            {
-                //panel.Controls.Add(pictureBoxFrames[i]);
-            }
+            panel.Controls.Remove(pictureBoxGrayscaleLeft);
+            panel.Controls.Remove(pictureBoxGrayscaleRight);
             Compression.mView = true;
             Compression.jView = false;
+            Compression.gView = false;
         }
+
+        private void grayscaleView_Click(object sender, EventArgs e)
+        {
+            panel.Controls.Remove(pictureBoxOne);
+            panel.Controls.Remove(pictureBoxTwo);
+            panel.Controls.Remove(pictureBoxThree);
+            panel.Controls.Add(pictureBoxGrayscaleLeft);
+            panel.Controls.Add(pictureBoxGrayscaleRight);
+            Compression.mView = false;
+            Compression.jView = false;
+            Compression.gView = true;
+        }
+
+
     }
 }
