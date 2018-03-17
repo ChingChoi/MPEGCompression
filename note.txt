@@ -11,3 +11,44 @@ Motion vector and compare reference frame to current frame to generate differenc
 All processed frame into byte array
 
 Save
+
+===============================================================
+Play frames
+===============================================================
+
+Load frames from openFileDialog
+
+Store frames into bitmap[]
+
+play initiate thread
+
+thread start timer event
+
+thread ends when reached to the end of bitmap[]
+
+reflect to % value of slider
+
+pause thread when dragging slider and resume after
+
+===============================================================
+Calculating from saved mpeg byte array
+===============================================================
+
+byte array size = width + height + iframes * iframeYCrCb + pframes * (pframeYCrCb + pframeMVYCrCb)
+
+iframes = 1 + Floor(pframes / 10)
+
+b - w - h = i * iYCrCb   +  p * (pYCrCb + pMV)
+
+b = w + h + i * (iYCrCb) + (i - 1) * 10 * (pYCrCb + pMVs)
+
+b = w + h + i * iYCrCb + i10pYCrCb + ipMVs - 10pYCrCb - 10pMVs
+
+b - w - h + 10pyCrCb + 10pMVs = i (iYCrCb + 10pYCrCb + pMVs)
+
+i = (b - w - h + 10pyCrCb + 10pMVs) / (iYCrCb + 10pYCrCb + pMVs)
+
+// if p > 10
+p = (i - 1) * 10
+
+does not work since pframes are not always a multiple of 10

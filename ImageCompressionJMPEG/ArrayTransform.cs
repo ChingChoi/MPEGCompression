@@ -49,6 +49,13 @@ namespace ImageCompressionJMPEG
             return byteArray;
         }
 
+        /// <summary>
+        /// Pad all channels with 0s that are not divisible by y or cr divider
+        /// </summary>
+        /// <param name="subYCrCb">Y Cr Cb channels</param>
+        /// <param name="yDivider">y divider</param>
+        /// <param name="crCbDivider">cr divider</param>
+        /// <returns>padded channels</returns>
         public static YCrCb padChannels(YCrCb subYCrCb, int yDivider, int crCbDivider)
         {
             if (subYCrCb.yWidth % yDivider != 0 || subYCrCb.yHeight % yDivider != 0)
@@ -84,6 +91,13 @@ namespace ImageCompressionJMPEG
             return subYCrCb;
         }
 
+        /// <summary>
+        /// Unpad all channels that were padded with 0 due to not divisible by y or cr divider
+        /// </summary>
+        /// <param name="iYCrCb">Y Cr Cb channels</param>
+        /// <param name="yDivider">y channel pad divider</param>
+        /// <param name="crCbDivider">cr channel pad divider</param>
+        /// <returns>Unpadded channels</returns>
         public static YCrCb unpadChannels(YCrCb iYCrCb, int yDivider, int crCbDivider)
         {
             if (Compression.originalWidth % yDivider != 0 
@@ -126,7 +140,7 @@ namespace ImageCompressionJMPEG
         /// <param name="width">channel width</param>
         /// <param name="height">channel height</param>
         /// <param name="divider">divider</param>
-        /// <returns></returns>
+        /// <returns>padded channel</returns>
         public static byte[] padChannel(byte[] channel, int width, int height, int divider)
         {
             int rightPad = 0;
@@ -166,7 +180,7 @@ namespace ImageCompressionJMPEG
         /// <param name="width">original channel width</param>
         /// <param name="height">original channel height</param>
         /// <param name="divider">divider</param>
-        /// <returns></returns>
+        /// <returns>Original unpadded channel</returns>
         public static byte[] unpadChannel(byte[] paddedChannel, int width, int height, int divider)
         {
             int rightPad = 0;
@@ -206,6 +220,36 @@ namespace ImageCompressionJMPEG
             byte[] output = new byte[input.Length * 2];
             System.Buffer.BlockCopy(input, 0, output, 0, input.Length);
             return output;
+        }
+
+        /// <summary>
+        /// Convert vector array to byte array
+        /// </summary>
+        /// <param name="vectors">vector array</param>
+        /// <returns>byte array</returns>
+        public static byte[] convertToByteFromVector(Vector[] vectors)
+        {
+            byte[] result = new byte[vectors.Length * 2];
+            for (int i = 0, index = 0; i < vectors.Length; i++)
+            {
+                result[index++] = (byte)((sbyte)vectors[i].x);
+                result[index++] = (byte)((sbyte)vectors[i].y);
+            }
+            return result;
+        }
+
+        /// <summary>
+        /// Convert vectors in byte array into vector array
+        /// </summary>
+        /// <param name="vectorInByte">vectors in byte array</param>
+        /// <returns>Vector array</returns>
+        public static Vector[] convertToVectorFromByte(byte[] vectorInByte)
+        {
+            Vector[] vectors = new Vector[vectorInByte.Length / 2];
+            for (int i = 0, index = 0; i < vectors.Length; i++) {
+                vectors[i] = new Vector((sbyte)vectorInByte[index++], (sbyte)vectorInByte[index++]);
+            }
+            return vectors;
         }
     }
 }

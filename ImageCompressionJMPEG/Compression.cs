@@ -38,7 +38,7 @@ namespace ImageCompressionJMPEG
             this.crCbWidth = crCbWidth;
         }
     }
-    
+
     /// <summary>
     /// Structure for holding double format Y Cr Cb channels
     /// </summary>
@@ -288,6 +288,11 @@ namespace ImageCompressionJMPEG
         public static int macroSizeCrCb = 8;
 
         /// <summary>
+        /// DCT Block Size
+        /// </summary>
+        public static int DCT_BLOCK_SIZE = 8;
+
+        /// <summary>
         /// Number of frames to be processed
         /// </summary>
         public static int numOfFrame = 0;
@@ -409,7 +414,7 @@ namespace ImageCompressionJMPEG
             Vector[] motionVectorsY;
             Vector[] motionVectorsCr;
             Vector[] motionVectorsCb;
-            
+
             motionVector(cSubYCrCb, rIYCrCb, width, height, out motionVectorsY, out motionVectorsCr, out motionVectorsCb);
 
             double[] diffBlockY = new double[cYCrCb.Y.Length];
@@ -420,7 +425,7 @@ namespace ImageCompressionJMPEG
             diffBlockY = DiffBlock(motionVectorsY, rIYCrCb.Y, cSubYCrCb.Y, width, height, macroSizeY);
             diffBlockCr = DiffBlock(motionVectorsCr, rIYCrCb.Cr, cSubYCrCb.Cr, cSubYCrCb.crCbWidth, cSubYCrCb.crCbHeight, macroSizeCrCb);
             diffBlockCb = DiffBlock(motionVectorsCb, rIYCrCb.Cb, cSubYCrCb.Cb, cSubYCrCb.crCbWidth, cSubYCrCb.crCbHeight, macroSizeCrCb);
-                        
+
             DYCrCb mDiffBlocks = new DYCrCb(diffBlockY, diffBlockCr, diffBlockCb, cSubYCrCb.yHeight, cSubYCrCb.yWidth, cSubYCrCb.crCbHeight, cSubYCrCb.crCbWidth);
             DYCrCb dctMDiffBlocks = DiscreteCosineTransform(mDiffBlocks);
             YCrCb qMDiffBlocks = QuantizationAndZigzag(dctMDiffBlocks);
@@ -432,7 +437,7 @@ namespace ImageCompressionJMPEG
             int backHeight = BitConverter.ToInt32(widthByteArray, 0);
 
             int channelLength = rIYCrCb.Y.Length + rIYCrCb.Cr.Length + rIYCrCb.Cb.Length;
-            int PFrameLength = (numOfFrame - 1) * ((motionVectorsY.Length + motionVectorsCr.Length + motionVectorsCb.Length)*2 + channelLength);
+            int PFrameLength = (numOfFrame - 1) * ((motionVectorsY.Length + motionVectorsCr.Length + motionVectorsCb.Length) * 2 + channelLength);
             int IFrameLength = widthByteArray.Length + heightByteArray.Length + channelLength;
             int compressedByteArrayLength = PFrameLength + IFrameLength;
 
@@ -449,11 +454,11 @@ namespace ImageCompressionJMPEG
             offset += rQYCrCb.Cr.Length;
             System.Buffer.BlockCopy(rQYCrCb.Cb, 0, compressedByteArray, offset, rQYCrCb.Cb.Length);
             offset += rQYCrCb.Cb.Length;
-            System.Buffer.BlockCopy(convertToByteFromVector(motionVectorsY), 0, compressedByteArray, offset, motionVectorsY.Length * 2);
+            System.Buffer.BlockCopy(ArrayTransform.convertToByteFromVector(motionVectorsY), 0, compressedByteArray, offset, motionVectorsY.Length * 2);
             offset += motionVectorsY.Length * 2;
-            System.Buffer.BlockCopy(convertToByteFromVector(motionVectorsCr), 0, compressedByteArray, offset, motionVectorsCr.Length * 2);
+            System.Buffer.BlockCopy(ArrayTransform.convertToByteFromVector(motionVectorsCr), 0, compressedByteArray, offset, motionVectorsCr.Length * 2);
             offset += motionVectorsCr.Length * 2;
-            System.Buffer.BlockCopy(convertToByteFromVector(motionVectorsCb), 0, compressedByteArray, offset, motionVectorsCb.Length * 2);
+            System.Buffer.BlockCopy(ArrayTransform.convertToByteFromVector(motionVectorsCb), 0, compressedByteArray, offset, motionVectorsCb.Length * 2);
             offset += motionVectorsCb.Length * 2;
             System.Buffer.BlockCopy(qMDiffBlocks.Y, 0, compressedByteArray, offset, qMDiffBlocks.Y.Length);
             offset += qMDiffBlocks.Y.Length;
@@ -505,7 +510,7 @@ namespace ImageCompressionJMPEG
             double[] diffBlockCb = DiffBlock(motionVectorsCb, rSubYCrCb.Cb, cSubYCrCb.Cb,
                 rSubYCrCb.crCbWidth, rSubYCrCb.crCbHeight, macroSizeCrCb);
             // Compress differences blocks
-            DYCrCb diffBlocks = new DYCrCb(diffBlockY, diffBlockCr, diffBlockCb, 
+            DYCrCb diffBlocks = new DYCrCb(diffBlockY, diffBlockCr, diffBlockCb,
                 cSubYCrCb.yHeight, cSubYCrCb.yWidth, cSubYCrCb.crCbHeight, cSubYCrCb.crCbWidth);
             DYCrCb dctDiffBlocks = DiscreteCosineTransform(diffBlocks);
             YCrCb qDiffBlocks = QuantizationAndZigzag(dctDiffBlocks);
@@ -630,14 +635,14 @@ namespace ImageCompressionJMPEG
         /// <returns>Compressed MPEG information to be saved or rerendered</returns>
         public static MPEGInfo MPEGCompression(Bitmap[] inputFrames)
         {
-            YCrCb[] iFrames = new YCrCb[inputFrames.Length / I_FRAME_RANGE + 1];
+            YCrCb[] iFrames = new YCrCb[(inputFrames.Length - 1) / I_FRAME_RANGE + 1];
             PFrame[] pFrames = new PFrame[inputFrames.Length - iFrames.Length];
             int pFrameIndex = 0;
             JPEGInfo currentIFrame = JPEGCompression(inputFrames[0]);
             iFrames[0] = currentIFrame.qYCrCb;
             for (int currentFrame = 1; currentFrame < inputFrames.Length; currentFrame++)
             {
-                if (currentFrame % I_FRAME_RANGE == 0 && currentFrame != 0)
+                if (currentFrame % I_FRAME_RANGE == 0)
                 {
                     currentIFrame = JPEGCompression(inputFrames[currentFrame]);
                     iFrames[currentFrame / I_FRAME_RANGE] = currentIFrame.qYCrCb;
@@ -660,6 +665,7 @@ namespace ImageCompressionJMPEG
             int crCbDivder = 8;
             Bitmap[] mpegFrames = new Bitmap[numOfFrames];
             YCrCb currentIFrame = mpegInfo.iFrames[0];
+            currentQuantizationTable = quantizationTableJPEG;
             DYCrCb iQCurrentIFrame = InverseQuantizationAndZigzag(currentIFrame);
             YCrCb iCurrentYCrCb = InverseDiscreteCosineTransform(iQCurrentIFrame);
             currentIFrame = ArrayTransform.padChannels(iCurrentYCrCb, macroSizeY, macroSizeCrCb);
@@ -734,16 +740,6 @@ namespace ImageCompressionJMPEG
         //    return result;
         //}
 
-        public static byte[] convertToByteFromVector(Vector[] vectors)
-        {
-            byte[] result = new byte[vectors.Length * 2];
-            for (int i = 0, index = 0; i < vectors.Length; i++)
-            {
-                result[index++] = (byte)vectors[i].x;
-                result[index++] = (byte)vectors[i].y;
-            }
-            return result;
-        }
 
         /// <summary>
         /// Returns difference block of two frame using given motion vectors
@@ -758,9 +754,9 @@ namespace ImageCompressionJMPEG
         {
             int index = 0;
             double[] diffBlock = new double[reference.Length];
-            for (int y = 0; y < height; y+=N)
+            for (int y = 0; y < height; y += N)
             {
-                for (int x = 0; x < width; x+=N)
+                for (int x = 0; x < width; x += N)
                 {
                     int i = motionVectors[index].x;
                     int j = motionVectors[index].y;
@@ -833,7 +829,7 @@ namespace ImageCompressionJMPEG
         /// <param name="width">width of image</param>
         /// <param name="height">height of image</param>
         /// <returns>Mean absolute differences</returns>
-        public static double MAD(int N, int x, int y, int i, int j,  byte[] C, byte[] R, int width, int height)
+        public static double MAD(int N, int x, int y, int i, int j, byte[] C, byte[] R, int width, int height)
         {
             double result = 0;
             int numRan = 0;
@@ -906,7 +902,7 @@ namespace ImageCompressionJMPEG
             Bitmap bitmap = new Bitmap(yCrCb.yWidth, yCrCb.yHeight);
             int index = 0;
             Color[] pixels = new Color[yCrCb.Y.Length];
-            
+
             for (int j = 0; j < yCrCb.yHeight; j++)
             {
                 for (int i = 0; i < yCrCb.yWidth; i++)
@@ -1186,7 +1182,7 @@ namespace ImageCompressionJMPEG
                 reducedNumOfBlockRow, reducedNumOfBlockColumn, yCrCb.crCbWidth, yCrCb.crCbHeight);
             double[] modCb = InverseBlockQuantization(yCrCb.Cb,
                 reducedNumOfBlockRow, reducedNumOfBlockColumn, yCrCb.crCbWidth, yCrCb.crCbHeight);
-            
+
             return new DYCrCb(modY, modCr, modCb, yCrCb.yHeight, yCrCb.yWidth, yCrCb.crCbHeight, yCrCb.crCbWidth);
         }
 
@@ -1348,7 +1344,7 @@ namespace ImageCompressionJMPEG
             }
             return result;
         }
-        
+
         public static double[] InverseBlockQuantization(byte[] channel, int numOfBlockRow,
             int numOfBlockColumn, int width, int height)
         {
@@ -1368,10 +1364,10 @@ namespace ImageCompressionJMPEG
                 {
                     for (int x = 0; x < blockSize && x + currentBlockColumn * blockSize < width; x++)
                     {
-                         result[(x + currentBlockColumn * blockSize) +
-                                (y + currentBlockRow * blockSize) * width] = (double)((sbyte)channel[(x + currentBlockColumn * blockSize) +
-                                (y + currentBlockRow * blockSize) * width] * currentQuantizationTable[x + blockSize * y]);
-                        
+                        result[(x + currentBlockColumn * blockSize) +
+                               (y + currentBlockRow * blockSize) * width] = (double)((sbyte)channel[(x + currentBlockColumn * blockSize) +
+                               (y + currentBlockRow * blockSize) * width] * currentQuantizationTable[x + blockSize * y]);
+
                     }
                 }
                 currentBlockColumn++;
@@ -1393,7 +1389,7 @@ namespace ImageCompressionJMPEG
         /// <param name="width">width of the image</param>
         /// <param name="height">height of the image</param>
         /// <returns></returns>
-        public static byte[] ByteArrayToZigzag(byte[] channel, int numOfBlockRow, 
+        public static byte[] ByteArrayToZigzag(byte[] channel, int numOfBlockRow,
             int numOfBlockColumn, int width, int height)
         {
             int numOfblock = numOfBlockRow * numOfBlockColumn;

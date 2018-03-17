@@ -50,6 +50,7 @@ namespace ImageCompressionJMPEG
         private Bitmap[] inputFrames;
         private byte[] compressedByteArray;
         private JPEGInfo jpegInfo;
+        private MPEGInfo mpegInfo;
         private Color themeColor;
         private Color themeBackgroundColor;
         private Color themeBackgroundColorTwo;
@@ -609,18 +610,19 @@ namespace ImageCompressionJMPEG
                         if (addToOne)
                         {
                             pictureBoxOne.Image = null;
-                            pictureBoxOne.Image = Compression.JPEGDecompression(SaveAndLoad.loadByteArray(File.ReadAllBytes(dialog.FileNames[0])));
+                            pictureBoxOne.Image = Compression.JPEGDecompression(SaveAndLoad.loadByteArrayJPEG(File.ReadAllBytes(dialog.FileNames[0])));
                         }
                         else
                         {
                             pictureBoxTwo.Image = null;
-                            pictureBoxTwo.Image = Compression.JPEGDecompression(SaveAndLoad.loadByteArray(File.ReadAllBytes(dialog.FileNames[0])));
+                            pictureBoxTwo.Image = Compression.JPEGDecompression(SaveAndLoad.loadByteArrayJPEG(File.ReadAllBytes(dialog.FileNames[0])));
                         }
                     }
-                    else if (Compression.jView && Path.GetExtension(dialog.FileNames[0]).Equals(".CMPEG"))
+                    else if (Compression.mView && Path.GetExtension(dialog.FileNames[0]).Equals(".CMPEG"))
                     {
-                        pictureBoxOne.Image = null;
-                        //pictureBoxOne.Image = Compression.MPEGDecompression(File.ReadAllBytes(dialog.FileNames[0]));
+                        pictureBoxThree.Image = null;
+                        inputFrames = Compression.MPEGDecompression(SaveAndLoad.loadByteArrayMPEG(File.ReadAllBytes(dialog.FileNames[0])));
+                        pictureBoxThree.Image = inputFrames[0];
                     }
                     else if (Compression.jView)
                     {
@@ -731,15 +733,28 @@ namespace ImageCompressionJMPEG
                 Stream f = saveFileDialog.OpenFile();
                 if (f != null)
                 {
-                    BinaryWriter wr = new BinaryWriter(f);
-                    if (jpegInfo.originalHeight != 0)
+                    if (Path.GetExtension(saveFileDialog.FileName).Equals(".CJPG"))
                     {
-                        compressedByteArray = SaveAndLoad.saveIntoByteArray(jpegInfo);
-                        wr.Write(compressedByteArray);
-//                        File.WriteAllBytes(saveFileDialog.FileName, compressedByteArray);
+                        BinaryWriter wr = new BinaryWriter(f);
+                        if (jpegInfo.originalHeight != 0)
+                        {
+                            compressedByteArray = SaveAndLoad.saveIntoByteArray(jpegInfo);
+                            wr.Write(compressedByteArray);
+                        }
+                        wr.Close();
+                        f.Close();
                     }
-                    wr.Close();
-                    f.Close();
+                    if (Path.GetExtension(saveFileDialog.FileName).Equals(".CMPEG"))
+                    {
+                        BinaryWriter wr = new BinaryWriter(f);
+                        if (mpegInfo.originalHeight != 0)
+                        {
+                            compressedByteArray = SaveAndLoad.saveIntoByteArray(mpegInfo);
+                            wr.Write(compressedByteArray);
+                        }
+                        wr.Close();
+                        f.Close();
+                    }
                 }
             }
         }
@@ -858,7 +873,6 @@ namespace ImageCompressionJMPEG
         /// <param name="e">event</param>
         private void mPEGToolStripMenuItem_Click(object sender, EventArgs e)
         {
-            MPEGInfo mpegInfo;
             if (inputFrames.Length > 0)
             {
                 mpegInfo = Compression.MPEGCompression(inputFrames);
