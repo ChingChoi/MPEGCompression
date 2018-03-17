@@ -67,22 +67,18 @@ namespace ImageCompressionJMPEG
                 subYCrCb.yWidth += rightPad;
                 subYCrCb.yHeight += bottomPad;
             }
-            if ((int)Math.Ceiling(Compression.originalWidth / 2.0) % crCbDivider != 0 || 
-                (int)Math.Ceiling(Compression.originalHeight / 2.0) % crCbDivider != 0)
+            if (subYCrCb.crCbWidth % crCbDivider != 0 || 
+                subYCrCb.crCbHeight % crCbDivider != 0)
             {
-                subYCrCb.Cr = padChannel(subYCrCb.Cr, 
-                    (int)Math.Ceiling(Compression.originalWidth / 2.0), 
-                    (int)Math.Ceiling(Compression.originalHeight / 2.0), crCbDivider);
-                subYCrCb.Cb = padChannel(subYCrCb.Cb, 
-                    (int)Math.Ceiling(Compression.originalWidth / 2.0), 
-                    (int)Math.Ceiling(Compression.originalHeight / 2.0), crCbDivider);
-                if ((int) Math.Ceiling(Compression.originalWidth / 2.0) % crCbDivider != 0)
+                subYCrCb.Cr = padChannel(subYCrCb.Cr, subYCrCb.crCbWidth, subYCrCb.crCbHeight, crCbDivider);
+                subYCrCb.Cb = padChannel(subYCrCb.Cb, subYCrCb.crCbWidth, subYCrCb.crCbHeight, crCbDivider);
+                if (subYCrCb.crCbWidth % crCbDivider != 0)
                 {
-                    subYCrCb.crCbWidth += crCbDivider - ((int)Math.Ceiling(Compression.originalWidth / 2.0) % crCbDivider);
+                    subYCrCb.crCbWidth += crCbDivider - (subYCrCb.crCbWidth % crCbDivider);
                 }
-                if ((int)Math.Ceiling(Compression.originalHeight / 2.0) % crCbDivider != 0)
+                if (subYCrCb.crCbHeight % crCbDivider != 0)
                 {
-                    subYCrCb.crCbHeight += crCbDivider - ((int)Math.Ceiling(Compression.originalHeight / 2.0) % crCbDivider);
+                    subYCrCb.crCbHeight += crCbDivider - (subYCrCb.crCbHeight % crCbDivider);
                 }
             }
             return subYCrCb;

@@ -620,7 +620,7 @@ namespace ImageCompressionJMPEG
                     else if (Compression.jView && Path.GetExtension(dialog.FileNames[0]).Equals(".CMPEG"))
                     {
                         pictureBoxOne.Image = null;
-                        pictureBoxOne.Image = Compression.MPEGDecompression(File.ReadAllBytes(dialog.FileNames[0]));
+                        //pictureBoxOne.Image = Compression.MPEGDecompression(File.ReadAllBytes(dialog.FileNames[0]));
                     }
                     else if (Compression.jView)
                     {
@@ -715,10 +715,10 @@ namespace ImageCompressionJMPEG
             Bitmap bitmap = new Bitmap(pictureBoxOne.Image);
             Bitmap grayscaleBitmap;
             Bitmap grayscaleBitmapTwo;
-            jpegInfo = Compression.JPEGCompression(bitmap, pictureBoxOne.Image.Width,
-                pictureBoxOne.Image.Height, out grayscaleBitmap, out grayscaleBitmapTwo);
+            jpegInfo = Compression.JPEGCompression(bitmap);
             compressedBitmap = Compression.JPEGDecompression(jpegInfo);
             pictureBoxTwo.Image = new Bitmap(compressedBitmap);
+            Compression.Grayscale(bitmap, out grayscaleBitmap, out grayscaleBitmapTwo);
             updateGrayscale(grayscaleBitmap, grayscaleBitmapTwo);
         }
 
@@ -830,13 +830,12 @@ namespace ImageCompressionJMPEG
                 Bitmap bitmapOne = new Bitmap(pictureBoxOne.Image);
                 Bitmap grayscaleBitmap;
                 Bitmap grayscaleBitmapTwo;
-                JPEGInfo iFrame = Compression.JPEGCompression(bitmapOne, 
-                    pictureBoxOne.Image.Width, pictureBoxOne.Image.Height, 
-                    out grayscaleBitmap, out grayscaleBitmapTwo);
+                JPEGInfo iFrame = Compression.JPEGCompression(bitmapOne);
+                Compression.Grayscale(bitmapOne, out grayscaleBitmap, out grayscaleBitmapTwo);
                 compressedBitmap = Compression.JPEGDecompression(iFrame);
                 pictureBoxOne.Image = new Bitmap(compressedBitmap);
                 Bitmap bitmapTwo = new Bitmap(pictureBoxTwo.Image);
-                MPEGPrep mPEGPReg = Compression.MPEGMotionVector(compressedBitmap, bitmapTwo);
+                PFrame mPEGPReg = Compression.MPEGMotionVector(compressedBitmap, bitmapTwo);
                 motionVectors = mPEGPReg.MotionVectorsY;
                 drawMV = true;
                 pictureBoxTwo.Image = null;
@@ -855,19 +854,17 @@ namespace ImageCompressionJMPEG
         /// <summary>
         /// MPEG two currently loaded frame
         /// </summary>
-        /// <param name="sender"></param>
-        /// <param name="e"></param>
+        /// <param name="sender">sender object</param>
+        /// <param name="e">event</param>
         private void mPEGToolStripMenuItem_Click(object sender, EventArgs e)
         {
-            //Bitmap bitmapOne = new Bitmap(pictureBoxOne.Image);
-            //Bitmap grayscaleBitmap;
-            //Bitmap grayscaleBitmapTwo;
-
-            //compressedBitmap = Compression.JPEGCompression(bitmapOne, pictureBoxOne.Image.Width, 
-            //    pictureBoxOne.Image.Height, out grayscaleBitmap, out grayscaleBitmapTwo);
-            //pictureBoxOne.Image = new Bitmap(compressedBitmap);
-            //Bitmap bitmapTwo = new Bitmap(pictureBoxTwo.Image);
-            //updateGrayscale(grayscaleBitmap, grayscaleBitmapTwo);
+            MPEGInfo mpegInfo;
+            if (inputFrames.Length > 0)
+            {
+                mpegInfo = Compression.MPEGCompression(inputFrames);
+                inputFrames = Compression.MPEGDecompression(mpegInfo);
+                pictureBoxThree.Image = new Bitmap(inputFrames[0]);
+            }
         }
 
         /// <summary>

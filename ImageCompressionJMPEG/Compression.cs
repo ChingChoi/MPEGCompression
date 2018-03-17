@@ -87,24 +87,53 @@ namespace ImageCompressionJMPEG
         }
     }
 
+    /// <summary>
+    /// Hold all information required for saving a custom mpeg compressed images
+    /// </summary>
     public struct MPEGInfo
     {
         public int originalWidth;
         public int originalHeight;
-        public YCrCb[] frames;
+        public YCrCb[] iFrames;
+        public PFrame[] pFrames;
 
-        public MPEGInfo(int originalWidth, int originalHeight, YCrCb[] frames)
+        public MPEGInfo(int originalWidth, int originalHeight, YCrCb[] iFrames, PFrame[] pFrames)
         {
             this.originalWidth = originalWidth;
             this.originalHeight = originalHeight;
-            this.frames = frames;
+            this.iFrames = iFrames;
+            this.pFrames = pFrames;
         }
     }
 
-        /// <summary>
-        /// Structure for holding a two-dimensional vector
-        /// </summary>
-        public struct Vector
+    /// <summary>
+    /// Hold information of P frame
+    /// </summary>
+    public struct PFrame
+    {
+        YCrCb diffBlock;
+        Vector[] motionVectorsY;
+        Vector[] motionVectorsCr;
+        Vector[] motionVectorsCb;
+
+        public PFrame(YCrCb diffBlock, Vector[] motionVectorY, Vector[] motionVectorCr, Vector[] motionVectorCb)
+        {
+            this.diffBlock = diffBlock;
+            this.motionVectorsY = motionVectorY;
+            this.motionVectorsCr = motionVectorCr;
+            this.motionVectorsCb = motionVectorCb;
+        }
+
+        public YCrCb DiffBlock { get => diffBlock; set => diffBlock = value; }
+        public Vector[] MotionVectorsY { get => motionVectorsY; set => motionVectorsY = value; }
+        public Vector[] MotionVectorsCr { get => motionVectorsCr; set => motionVectorsCr = value; }
+        public Vector[] MotionVectorsCb { get => motionVectorsCb; set => motionVectorsCb = value; }
+    }
+
+    /// <summary>
+    /// Structure for holding a two-dimensional vector
+    /// </summary>
+    public struct Vector
     {
         public int x;
         public int y;
@@ -114,30 +143,6 @@ namespace ImageCompressionJMPEG
             this.x = x;
             this.y = y;
         }
-    }
-
-    /// <summary>
-    /// Structure that holds information to prepare for MPEG compression
-    /// </summary>
-    public struct MPEGPrep
-    {
-        Vector[] motionVectorsY;
-        Vector[] motionVectorsCr;
-        Vector[] motionVectorsCb;
-        YCrCb mYCrCb;
-
-        public MPEGPrep(Vector[] motionVectorsY, Vector[] motionVectorsCr, Vector[] motionVectorsCb, YCrCb mYCrCb)
-        {
-            this.motionVectorsY = motionVectorsY;
-            this.motionVectorsCr = motionVectorsCr;
-            this.motionVectorsCb = motionVectorsCb;
-            this.mYCrCb = mYCrCb;
-        }
-
-        public Vector[] MotionVectorsY { get => motionVectorsY; set => motionVectorsY = value; }
-        public Vector[] MotionVectorsCr { get => motionVectorsCr; set => motionVectorsCr = value; }
-        public Vector[] MotionVectorsCb { get => motionVectorsCb; set => motionVectorsCb = value; }
-        public YCrCb MYCrCb { get => mYCrCb; set => mYCrCb = value; }
     }
 
     /// <summary>
@@ -307,8 +312,19 @@ namespace ImageCompressionJMPEG
         /// </summary>
         public static bool mView = false;
 
+        /// <summary>
+        /// Indicate if currently on grayscale view
+        /// </summary>
         public static bool gView = false;
 
+        /// <summary>
+        /// Range between each I frame
+        /// </summary>
+        public static int I_FRAME_RANGE = 10;
+
+        /// <summary>
+        /// Will hold the currently selected quantization table depending on jpeg or mpeg
+        /// </summary>
         public static double[] currentQuantizationTable;
         public static int SearchArea { get => searchArea; set => searchArea = value; }
 
@@ -319,12 +335,12 @@ namespace ImageCompressionJMPEG
         /// <param name="width">Original bitmap width</param>
         /// <param name="height">Original bitmap height</param>
         /// <returns></returns>
-        public static JPEGInfo JPEGCompression(Bitmap bitmap, int width, int height, out Bitmap grayscaleBitmap, out Bitmap grayscaleBitmapTwo)
+        public static JPEGInfo JPEGCompression(Bitmap bitmap)
         {
             int yDivider = 8;
             int crCbDivider = 8;
-            originalHeight = height;
-            originalWidth = width;
+            originalHeight = bitmap.Height;
+            originalWidth = bitmap.Width;
             currentQuantizationTable = quantizationTableJPEG;
             // compressing
             YCrCb yCrCb = convertToYCrCb(bitmap);
@@ -332,11 +348,16 @@ namespace ImageCompressionJMPEG
             subYCrCb = ArrayTransform.padChannels(subYCrCb, yDivider, crCbDivider);
             DYCrCb dctYCrCb = DiscreteCosineTransform(subYCrCb);
             YCrCb qYCrCb = QuantizationAndZigzag(dctYCrCb);
+            return new JPEGInfo(originalWidth, originalHeight, qYCrCb);
+        }
+
+        public static void Grayscale(Bitmap bitmap, out Bitmap grayscaleBitmap, out Bitmap grayscaleBitmapTwo)
+        {
+            YCrCb yCrCb = convertToYCrCb(bitmap);
+            YCrCb subYCrCb = subSample(yCrCb);
             // grayscale channel display
             grayscaleBitmap = convertToGrayscaleBitmap(subYCrCb.Cr, subYCrCb.crCbWidth, subYCrCb.crCbHeight);
             grayscaleBitmapTwo = convertToGrayscaleBitmap(subYCrCb.Cb, subYCrCb.crCbWidth, subYCrCb.crCbHeight);
-            return new JPEGInfo(originalWidth, originalHeight, qYCrCb);
-            
         }
 
         /// <summary>
@@ -359,36 +380,13 @@ namespace ImageCompressionJMPEG
             return result;
         }
 
-
-        ///// <summary>
-        ///// Decompress JPEG into bitmap
-        ///// </summary>
-        ///// <param name="inputArray"></param>
-        ///// <returns></returns>
-        //public static Bitmap JPEGDecompression(byte[] inputArray)
-        //{
-        //    int yDivider = 8;
-        //    int crCbDivder = 8;
-        //    currentQuantizationTable = quantizationTableJPEG;
-        //    JPEGInfo jpegSaveInfo = SaveAndLoad.loadByteArray(inputArray);
-        //    originalHeight = jpegSaveInfo.originalHeight;
-        //    originalWidth = jpegSaveInfo.originalWidth;
-        //    YCrCb qYCrCb = jpegSaveInfo.qYCrCb;
-        //    DYCrCb iQYCrCb = InverseQuantizationAndZigzag(qYCrCb);
-        //    YCrCb iYCrCb = InverseDiscreteCosineTransform(iQYCrCb);
-        //    iYCrCb = ArrayTransform.unpadChannels(iYCrCb, yDivider, crCbDivder);
-        //    YCrCb fillediYCrCb = fillSubSample(iYCrCb);
-        //    Bitmap result = convertToBitmap(fillediYCrCb);
-        //    return result;
-        //}
-
         /// <summary>
         /// Motion vector for two frame and prepares for MPEG
         /// </summary>
         /// <param name="referenceArray">Reference frame</param>
         /// <param name="resultArray">Result frame</param>
         /// <returns>MPEGPrep structure</returns>
-        public static MPEGPrep MPEGMotionVector(Bitmap reference, Bitmap current)
+        public static PFrame MPEGMotionVector(Bitmap reference, Bitmap current)
         {
             numOfFrame = 2;
             originalHeight = reference.Height;
@@ -477,8 +475,41 @@ namespace ImageCompressionJMPEG
 
             displayBitmap = convertToBitmap(filledIDiffBlocks);
 
-            MPEGPrep mPEGPrep = new MPEGPrep(motionVectorsY, motionVectorsCr, motionVectorsCb, filledIDiffBlocks);
-            return mPEGPrep;
+            return new PFrame(filledIDiffBlocks, motionVectorsY, motionVectorsCr, motionVectorsCb);
+        }
+
+        public static PFrame MPEGMotionVector(YCrCb reference, Bitmap current)
+        {
+            originalHeight = current.Height;
+            originalWidth = current.Width;
+            // Prepare reference frame
+            currentQuantizationTable = quantizationTableJPEG;
+            DYCrCb rIQYCrCb = InverseQuantizationAndZigzag(reference);
+            YCrCb rSubYCrCb = InverseDiscreteCosineTransform(rIQYCrCb);
+            rSubYCrCb = ArrayTransform.padChannels(rSubYCrCb, macroSizeY, macroSizeCrCb);
+            // Prepare current frame
+            YCrCb cYCrCb = convertToYCrCb(current);
+            YCrCb cSubYCrCb = subSample(cYCrCb);
+            cSubYCrCb = ArrayTransform.padChannels(cSubYCrCb, macroSizeY, macroSizeCrCb);
+            // Find motion vectors
+            Vector[] motionVectorsY;
+            Vector[] motionVectorsCr;
+            Vector[] motionVectorsCb;
+            motionVector(cSubYCrCb, rSubYCrCb, rSubYCrCb.yWidth, rSubYCrCb.yHeight,
+                out motionVectorsY, out motionVectorsCr, out motionVectorsCb);
+            // Calculate differences blocks
+            double[] diffBlockY = DiffBlock(motionVectorsY, rSubYCrCb.Y, cSubYCrCb.Y,
+                rSubYCrCb.yWidth, rSubYCrCb.yHeight, macroSizeY);
+            double[] diffBlockCr = DiffBlock(motionVectorsCr, rSubYCrCb.Cr, cSubYCrCb.Cr,
+                rSubYCrCb.crCbWidth, rSubYCrCb.crCbHeight, macroSizeCrCb);
+            double[] diffBlockCb = DiffBlock(motionVectorsCb, rSubYCrCb.Cb, cSubYCrCb.Cb,
+                rSubYCrCb.crCbWidth, rSubYCrCb.crCbHeight, macroSizeCrCb);
+            // Compress differences blocks
+            DYCrCb diffBlocks = new DYCrCb(diffBlockY, diffBlockCr, diffBlockCb, 
+                cSubYCrCb.yHeight, cSubYCrCb.yWidth, cSubYCrCb.crCbHeight, cSubYCrCb.crCbWidth);
+            DYCrCb dctDiffBlocks = DiscreteCosineTransform(diffBlocks);
+            YCrCb qDiffBlocks = QuantizationAndZigzag(dctDiffBlocks);
+            return new PFrame(qDiffBlocks, motionVectorsY, motionVectorsCr, motionVectorsCb);
         }
 
         /// <summary>
@@ -591,41 +622,117 @@ namespace ImageCompressionJMPEG
             }
         }
 
-        public static Bitmap MPEGDecompression(byte[] inputArray)
+        /// <summary>
+        /// MPEG compress all input frames
+        /// pre-condition: all frames of same width and height
+        /// </summary>
+        /// <param name="inputFrames">input frames</param>
+        /// <returns>Compressed MPEG information to be saved or rerendered</returns>
+        public static MPEGInfo MPEGCompression(Bitmap[] inputFrames)
         {
-            currentQuantizationTable = quantizationTableJPEG;
-            inputArray = RLCompression.ModifiedRunLengthDecompress(inputArray);
-            byte[] widthByteArray = new byte[intToByteSize];
-            byte[] heightByteArray = new byte[intToByteSize];
-            int offset = 0;
-            System.Buffer.BlockCopy(inputArray, 0, widthByteArray, 0, intToByteSize);
-            offset += intToByteSize;
-            System.Buffer.BlockCopy(inputArray, offset, heightByteArray, 0, intToByteSize);
-            offset += intToByteSize;
-
-            int width = BitConverter.ToInt32(widthByteArray, 0);
-            int height = BitConverter.ToInt32(widthByteArray, 0);
-            int reducedWidth = (int)(((double)width / 2.0));
-            int reducedHeight = (int)(((double)height / 2.0));
-
-            byte[] qY = new byte[width * height];
-            byte[] qCr = new byte[reducedWidth * reducedHeight];
-            byte[] qCb = new byte[reducedWidth * reducedHeight];
-
-            System.Buffer.BlockCopy(inputArray, offset, qY, 0, qY.Length);
-            offset += qY.Length;
-            System.Buffer.BlockCopy(inputArray, offset, qCr, 0, qCr.Length);
-            offset += qCr.Length;
-            System.Buffer.BlockCopy(inputArray, offset, qCb, 0, qCb.Length);
-            offset += qCb.Length;
-
-            YCrCb qYCrCb = new YCrCb(qY, qCr, qCb, height, width, reducedHeight, reducedWidth);
-            DYCrCb iQYCrCb = InverseQuantizationAndZigzag(qYCrCb);
-            YCrCb iYCrCb = InverseDiscreteCosineTransform(iQYCrCb);
-            YCrCb fillediYCrCb = fillSubSample(iYCrCb);
-            Bitmap result = convertToBitmap(fillediYCrCb);
-            return result;
+            YCrCb[] iFrames = new YCrCb[inputFrames.Length / I_FRAME_RANGE + 1];
+            PFrame[] pFrames = new PFrame[inputFrames.Length - iFrames.Length];
+            int pFrameIndex = 0;
+            JPEGInfo currentIFrame = JPEGCompression(inputFrames[0]);
+            iFrames[0] = currentIFrame.qYCrCb;
+            for (int currentFrame = 1; currentFrame < inputFrames.Length; currentFrame++)
+            {
+                if (currentFrame % I_FRAME_RANGE == 0 && currentFrame != 0)
+                {
+                    currentIFrame = JPEGCompression(inputFrames[currentFrame]);
+                    iFrames[currentFrame / I_FRAME_RANGE] = currentIFrame.qYCrCb;
+                }
+                else
+                {
+                    pFrames[pFrameIndex++] = MPEGMotionVector(currentIFrame.qYCrCb, inputFrames[currentFrame]);
+                }
+            }
+            return new MPEGInfo(inputFrames[0].Width, inputFrames[0].Height, iFrames, pFrames);
         }
+
+        public static Bitmap[] MPEGDecompression(MPEGInfo mpegInfo)
+        {
+            originalHeight = mpegInfo.originalHeight;
+            originalWidth = mpegInfo.originalWidth;
+            int numOfFrames = mpegInfo.iFrames.Length + mpegInfo.pFrames.Length;
+            int pFrameIndex = 0;
+            int yDivider = 8;
+            int crCbDivder = 8;
+            Bitmap[] mpegFrames = new Bitmap[numOfFrames];
+            YCrCb currentIFrame = mpegInfo.iFrames[0];
+            DYCrCb iQCurrentIFrame = InverseQuantizationAndZigzag(currentIFrame);
+            YCrCb iCurrentYCrCb = InverseDiscreteCosineTransform(iQCurrentIFrame);
+            currentIFrame = ArrayTransform.padChannels(iCurrentYCrCb, macroSizeY, macroSizeCrCb);
+            iCurrentYCrCb = ArrayTransform.unpadChannels(iCurrentYCrCb, yDivider, crCbDivder);
+            mpegFrames[0] = convertToBitmap(fillSubSample(iCurrentYCrCb));
+
+            for (int currentFrame = 1; currentFrame < numOfFrames; currentFrame++)
+            {
+                if (currentFrame % I_FRAME_RANGE == 0)
+                {
+                    currentQuantizationTable = quantizationTableJPEG;
+                    DYCrCb iQYCrCb = InverseQuantizationAndZigzag(mpegInfo.iFrames[currentFrame / I_FRAME_RANGE]);
+                    YCrCb iYCrCb = InverseDiscreteCosineTransform(iQYCrCb);
+                    currentIFrame = ArrayTransform.padChannels(iYCrCb, macroSizeY, macroSizeCrCb);
+                    iYCrCb = ArrayTransform.unpadChannels(iYCrCb, yDivider, crCbDivder);
+                    mpegFrames[currentFrame] = convertToBitmap(fillSubSample(iYCrCb));
+                }
+                else
+                {
+                    currentQuantizationTable = quantizationTableMPEG;
+                    DYCrCb iQDiffBlocks = InverseQuantizationAndZigzag(mpegInfo.pFrames[pFrameIndex].DiffBlock);
+                    DYCrCb iDiffBlocks = InverseDiscreteCosineTransformMPEG(iQDiffBlocks);
+                    byte[] currentY = InverseDiffBlock(mpegInfo.pFrames[pFrameIndex].MotionVectorsY,
+                        currentIFrame.Y, iDiffBlocks.Y, iDiffBlocks.yWidth, iDiffBlocks.yHeight, macroSizeY);
+                    byte[] currentCr = InverseDiffBlock(mpegInfo.pFrames[pFrameIndex].MotionVectorsCr,
+                        currentIFrame.Cr, iDiffBlocks.Cr, iDiffBlocks.crCbWidth, iDiffBlocks.crCbHeight, macroSizeCrCb);
+                    byte[] currentCb = InverseDiffBlock(mpegInfo.pFrames[pFrameIndex].MotionVectorsCb,
+                        currentIFrame.Cb, iDiffBlocks.Cb, iDiffBlocks.crCbWidth, iDiffBlocks.crCbHeight, macroSizeCrCb);
+                    YCrCb currentBlocks = new YCrCb(currentY, currentCr, currentCb, iDiffBlocks.yHeight,
+                        iDiffBlocks.yWidth, iDiffBlocks.yHeight / 2, iDiffBlocks.yWidth / 2);
+                    currentBlocks = ArrayTransform.unpadChannels(currentBlocks, macroSizeY, macroSizeCrCb);
+                    mpegFrames[currentFrame] = convertToBitmap(fillSubSample(currentBlocks));
+                    pFrameIndex++;
+                }
+            }
+            return mpegFrames;
+        }
+
+        //public static Bitmap MPEGDecompression(byte[] inputArray)
+        //{
+        //    currentQuantizationTable = quantizationTableJPEG;
+        //    inputArray = RLCompression.ModifiedRunLengthDecompress(inputArray);
+        //    byte[] widthByteArray = new byte[intToByteSize];
+        //    byte[] heightByteArray = new byte[intToByteSize];
+        //    int offset = 0;
+        //    System.Buffer.BlockCopy(inputArray, 0, widthByteArray, 0, intToByteSize);
+        //    offset += intToByteSize;
+        //    System.Buffer.BlockCopy(inputArray, offset, heightByteArray, 0, intToByteSize);
+        //    offset += intToByteSize;
+
+        //    int width = BitConverter.ToInt32(widthByteArray, 0);
+        //    int height = BitConverter.ToInt32(widthByteArray, 0);
+        //    int reducedWidth = (int)(((double)width / 2.0));
+        //    int reducedHeight = (int)(((double)height / 2.0));
+
+        //    byte[] qY = new byte[width * height];
+        //    byte[] qCr = new byte[reducedWidth * reducedHeight];
+        //    byte[] qCb = new byte[reducedWidth * reducedHeight];
+
+        //    System.Buffer.BlockCopy(inputArray, offset, qY, 0, qY.Length);
+        //    offset += qY.Length;
+        //    System.Buffer.BlockCopy(inputArray, offset, qCr, 0, qCr.Length);
+        //    offset += qCr.Length;
+        //    System.Buffer.BlockCopy(inputArray, offset, qCb, 0, qCb.Length);
+        //    offset += qCb.Length;
+
+        //    YCrCb qYCrCb = new YCrCb(qY, qCr, qCb, height, width, reducedHeight, reducedWidth);
+        //    DYCrCb iQYCrCb = InverseQuantizationAndZigzag(qYCrCb);
+        //    YCrCb iYCrCb = InverseDiscreteCosineTransform(iQYCrCb);
+        //    YCrCb fillediYCrCb = fillSubSample(iYCrCb);
+        //    Bitmap result = convertToBitmap(fillediYCrCb);
+        //    return result;
+        //}
 
         public static byte[] convertToByteFromVector(Vector[] vectors)
         {
