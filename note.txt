@@ -1,40 +1,13 @@
-mpeg is not reflecting padding of jpeg at the moment
+===============================================================
+MPEG multi frame flow
 ===============================================================
 
-Reference JPEGed bitmap
+frames[N]
 
-- RGB -> YCrCb
-- YCrCb -> subYCrCb 
+JPEG first, and every 10th frame
 
-300 300
-150 150
-150 150
+Motion vector and compare reference frame to current frame to generate differences block
 
-- pad(subYCrCb)   // ready to be compared for motion vector
+All processed frame into byte array
 
-304 304
-152 152
-152 152
-
-Current original bitmap
-
-- RGB -> YCrCb
-- YCrCb -> subYCrCb 
-
-300 300
-150 150
-150 150
-
-- pad(subYCrCb)   // ready to be compared for motion vector
-
-304 304
-152 152
-152 152
-
-Do motion vectors
-
-Differences block for all channels
-motion vectors for all channels
-
-save everything
-
+Save

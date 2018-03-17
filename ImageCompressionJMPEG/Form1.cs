@@ -1,12 +1,7 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.ComponentModel;
-using System.Data;
 using System.Drawing;
 using System.IO;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+using System.Threading;
 using System.Windows.Forms;
 
 namespace ImageCompressionJMPEG
@@ -31,6 +26,9 @@ namespace ImageCompressionJMPEG
         private const int BUTTON_GAP = 3;
         private const int NUM_DISPLAY_FRAME = 6;
         private const float BUTTON_FONT_SIZE = 8f;
+        private const int VIDEO_PANEL_HEIGHT = 30;
+        private const int VIDEO_BUTTON_SIZE = 30;
+        private const float VIDEO_FONT_SIZE = 8.25f;
         private PictureBox pictureBoxOne;
         private PictureBox pictureBoxTwo;
         private PictureBox pictureBoxThree;
@@ -38,7 +36,7 @@ namespace ImageCompressionJMPEG
         private PictureBox pictureBoxGrayscaleRight;
         private bool addToOne = true;
         private Panel panel;
-        Panel motionVectorInfoPanel;
+        private Panel motionVectorInfoPanel;
         private CustomButton closeForm;
         private CustomButton minForm;
         private CustomButton maxForm;
@@ -49,13 +47,31 @@ namespace ImageCompressionJMPEG
         private CustomButton mpegView;
         private CustomButton grayscaleView;
         private Bitmap compressedBitmap;
+        private Bitmap[] inputFrames;
         private byte[] compressedByteArray;
+        private JPEGInfo jpegInfo;
         private Color themeColor;
         private Color themeBackgroundColor;
         private Color themeBackgroundColorTwo;
         private TextBox title;
         private Vector[] motionVectors;
         private bool drawMV = false;
+        //
+        // Slider panel
+        //
+        private Panel customSliderPanel;
+        private CustomSlider customSlider;
+        private float sliderValue;
+        //
+        // video panel
+        //
+        private Panel videoControlPanel;
+        private CustomButton playBegin;
+        private CustomButton playEnd;
+        private CustomButton playPause;
+        private System.Windows.Forms.Timer playTimer;
+        private int currentFrame = -1;
+        private bool playing = false;
 
         public Form1()
         {
@@ -66,160 +82,6 @@ namespace ImageCompressionJMPEG
             initializeCustom();
             customizeMenuStrip(menuStrip1);
             this.FormBorderStyle = System.Windows.Forms.FormBorderStyle.None;
-        }
-
-        /// <summary>
-        /// Override WndProc to allow for resizing
-        /// </summary>
-        /// <param name="m">Message for WndProc</param>
-        protected override void WndProc(ref Message m)
-        {
-            base.WndProc(ref m);
-            if (m.Msg == WM_NCHITTEST)
-            {
-                m.Result = (IntPtr)(HT_CAPTION);
-            }
-        }
-
-        /// <summary>
-        /// Redraw form when resized
-        /// </summary>
-        /// <param name="sender">sender object</param>
-        /// <param name="e">event</param>
-        private void ImageCompressor_Resize(object sender, EventArgs e)
-        {
-            if (this.WindowState != FormWindowState.Minimized)
-            {
-                Control control = (Control)sender;
-                int w = control.Size.Width;
-                int h = control.Size.Height;
-                closeForm.Location = new Point(w - CLOSE_FORM_HORZ_OFFSET, 0);
-                panel.Size = new Size(w, h - PANEL_VERT_OFFSET);
-                maxForm.Location = new Point(w - MAX_FORM_HORZ_OFFSET, 0);
-                minForm.Location = new Point(w - MIN_FORM_HORZ_OFFSET, 0);
-                pictureBoxOne.Size = new Size(w / 2 - PICTUREBOX_OFFSET * 3 / 2, h - 54 - PICTUREBOX_OFFSET * 2);
-                pictureBoxTwo.Size = new Size(w / 2 - PICTUREBOX_OFFSET * 3 / 2, h - 54 - PICTUREBOX_OFFSET * 2);
-                pictureBoxTwo.Location = new Point(w / 2 + PICTUREBOX_OFFSET / 2, 27 + PICTUREBOX_OFFSET);
-                pictureBoxThree.Size = new Size(w - PICTUREBOX_OFFSET * 2, h - 54 - PICTUREBOX_OFFSET * 3);
-                pictureBoxThree.Location = new Point(PICTUREBOX_OFFSET, 27 + PICTUREBOX_OFFSET);
-                pictureBoxGrayscaleLeft.Size = new Size(w / 2 - PICTUREBOX_OFFSET * 3 / 2, h - 54 - PICTUREBOX_OFFSET * 2);
-                pictureBoxGrayscaleRight.Size = new Size(w / 2 - PICTUREBOX_OFFSET * 3 / 2, h - 54 - PICTUREBOX_OFFSET * 2);
-                pictureBoxGrayscaleRight.Location = new Point(w / 2 + PICTUREBOX_OFFSET / 2, 27 + PICTUREBOX_OFFSET);
-                motionVectorInfoPanel.Width = w;
-                grayscaleView.Location = new System.Drawing.Point(motionVectorInfoPanel.Size.Width - LABEL_SIZE * 3 - PICTUREBOX_OFFSET, BUTTON_GAP);
-                jpegView.Location = new Point(motionVectorInfoPanel.Size.Width - LABEL_SIZE * 2 - PICTUREBOX_OFFSET, BUTTON_GAP);
-                mpegView.Location = new System.Drawing.Point(motionVectorInfoPanel.Size.Width - LABEL_SIZE - PICTUREBOX_OFFSET, BUTTON_GAP);
-            }
-        }
-
-        private void openToolStripMenuItem_Click(object sender, EventArgs e)
-        {
-            openImage();
-        }
-
-        private void openImage()
-        {
-            using (OpenFileDialog dialog = new OpenFileDialog())
-            {
-                dialog.Title = "Open Image";
-                dialog.Filter = "images|*.JPG; *.PNG; *.GJF; *.bmp; *.CJPG; *.CMPEG; * .CMPEG";
-                dialog.Multiselect = true;
-                if (dialog.ShowDialog() == DialogResult.OK)
-                {
-                    if (Compression.jView && Path.GetExtension(dialog.FileNames[0]).Equals(".CJPG"))
-                    {
-                        if (addToOne)
-                        {
-                            pictureBoxOne.Image = null;
-                            pictureBoxOne.Image = Compression.JPEGDecompression(File.ReadAllBytes(dialog.FileNames[0]));
-                        }
-                        else
-                        {
-                            pictureBoxTwo.Image = null;
-                            pictureBoxTwo.Image = Compression.JPEGDecompression(File.ReadAllBytes(dialog.FileNames[0]));
-                        }
-                    }
-                    else if (Compression.jView && Path.GetExtension(dialog.FileNames[0]).Equals(".CMPEG"))
-                    {
-                        pictureBoxOne.Image = null;
-                        pictureBoxOne.Image = Compression.MPEGDecompression(File.ReadAllBytes(dialog.FileNames[0]));
-                    }
-                    else if (Compression.jView)
-                    {
-                        if (addToOne)
-                        {
-                            pictureBoxOne.Image = null;
-                            pictureBoxOne.Image = new Bitmap(dialog.FileNames[0]);
-                        }
-                        else
-                        {
-                            pictureBoxTwo.Image = null;
-                            pictureBoxTwo.Image = new Bitmap(dialog.FileNames[0]);
-                        }
-                    }
-                    else
-                    {
-                        pictureBoxThree.Image = null;
-                        pictureBoxThree.Image = new Bitmap(dialog.FileNames[0]);
-                    }
-                    Refresh();
-                }
-                dialog.Dispose();
-            }
-        }
-
-        /// <summary>
-        /// Add an image to pictureBoxOne
-        /// </summary>
-        /// <param name="sender">sender object</param>
-        /// <param name="e"></param>
-        private void addImageOne(object sender, EventArgs e)
-        {
-            addToOne = true;
-            openImage();
-        }
-
-        /// <summary>
-        /// Remove an image from pictureBoxOne
-        /// </summary>
-        /// <param name="sender"></param>
-        /// <param name="e"></param>
-        private void removeImageOne(object sender, EventArgs e)
-        {
-            pictureBoxOne.Image = null;
-            Refresh();
-        }
-
-        /// <summary>
-        /// Add an image to pictureBoxTwo
-        /// </summary>
-        /// <param name="sender">sender object</param>
-        /// <param name="e"></param>
-        private void addImageTwo(object sender, EventArgs e)
-        {
-            addToOne = false;
-            openImage();
-        }
-
-        /// <summary>
-        /// Remove an image from pictureBoxOne
-        /// </summary>
-        /// <param name="sender"></param>
-        /// <param name="e"></param>
-        private void removeImageTwo(object sender, EventArgs e)
-        {
-            pictureBoxTwo.Image = null;
-            Refresh();
-        }
-
-        private void addImageThree(object sender, EventArgs e)
-        {
-            openImage();
-        }
-
-        private void removeImageThree(object sender, EventArgs e)
-        {
-            pictureBoxThree.Image = null;
         }
 
         private void initializeCustom()
@@ -356,7 +218,8 @@ namespace ImageCompressionJMPEG
             minForm.BackgroundImageLayout = System.Windows.Forms.ImageLayout.Zoom;
             minForm.FlatAppearance.BorderSize = 0;
             minForm.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
-            minForm.Font = new System.Drawing.Font("Microsoft Sans Serif", BUTTON_FONT_SIZE, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            minForm.Font = new System.Drawing.Font("Microsoft Sans Serif",
+                BUTTON_FONT_SIZE, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
             minForm.Location = new System.Drawing.Point(this.Width-105, 0);
             minForm.Name = "minForm";
             minForm.Size = new System.Drawing.Size(30, 25);
@@ -373,7 +236,8 @@ namespace ImageCompressionJMPEG
             title = new TextBox();
             title.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(35)))), ((int)(((byte)(35)))), ((int)(((byte)(35)))));
             title.BorderStyle = System.Windows.Forms.BorderStyle.None;
-            title.Font = new System.Drawing.Font("Microsoft YaHei UI", 9F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            title.Font = new System.Drawing.Font("Microsoft YaHei UI", 9F, 
+                System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
             title.Location = new System.Drawing.Point(LEFT_OFFSET, 4);
             title.Name = "Title";
             title.Size = new System.Drawing.Size(163, 16);
@@ -408,7 +272,8 @@ namespace ImageCompressionJMPEG
             currentSearchAreaRange.BorderStyle = System.Windows.Forms.BorderStyle.None;
             currentSearchAreaRange.Location = new System.Drawing.Point(PICTUREBOX_OFFSET, BUTTON_GAP);
             currentSearchAreaRange.Size = new System.Drawing.Size(LABEL_SIZE, LABEL_SIZE);
-            currentSearchAreaRange.Font = new System.Drawing.Font("Microsoft Sans Serif", BUTTON_FONT_SIZE, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            currentSearchAreaRange.Font = new System.Drawing.Font("Microsoft Sans Serif", 
+                BUTTON_FONT_SIZE, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
             currentSearchAreaRange.TextAlign = ContentAlignment.MiddleCenter;
             currentSearchAreaRange.Text = "15";
             currentSearchAreaRange.ForeColor = themeColor;
@@ -421,7 +286,8 @@ namespace ImageCompressionJMPEG
             addSearchAreaRange.BackgroundImageLayout = System.Windows.Forms.ImageLayout.Zoom;
             addSearchAreaRange.FlatAppearance.BorderSize = 0;
             addSearchAreaRange.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
-            addSearchAreaRange.Font = new System.Drawing.Font("Microsoft Sans Serif", BUTTON_FONT_SIZE, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            addSearchAreaRange.Font = new System.Drawing.Font("Microsoft Sans Serif", 
+                BUTTON_FONT_SIZE, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
             addSearchAreaRange.Location = new System.Drawing.Point(PICTUREBOX_OFFSET + LABEL_SIZE, BUTTON_GAP);
             addSearchAreaRange.Name = "addSearchAreaRange";
             addSearchAreaRange.Size = new System.Drawing.Size(LABEL_SIZE, LABEL_SIZE);
@@ -440,7 +306,8 @@ namespace ImageCompressionJMPEG
             subtractSearchAreaRange.BackgroundImageLayout = System.Windows.Forms.ImageLayout.Zoom;
             subtractSearchAreaRange.FlatAppearance.BorderSize = 0;
             subtractSearchAreaRange.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
-            subtractSearchAreaRange.Font = new System.Drawing.Font("Microsoft Sans Serif", BUTTON_FONT_SIZE, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, (byte)0);
+            subtractSearchAreaRange.Font = new System.Drawing.Font("Microsoft Sans Serif", 
+                BUTTON_FONT_SIZE, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, (byte)0);
             subtractSearchAreaRange.Location = new System.Drawing.Point(PICTUREBOX_OFFSET + LABEL_SIZE * 2, BUTTON_GAP);
             subtractSearchAreaRange.Name = "subtractSearchAreaRange";
             subtractSearchAreaRange.Size = new System.Drawing.Size(LABEL_SIZE, LABEL_SIZE);
@@ -459,7 +326,8 @@ namespace ImageCompressionJMPEG
             jpegView.BackgroundImageLayout = System.Windows.Forms.ImageLayout.Zoom;
             jpegView.FlatAppearance.BorderSize = 0;
             jpegView.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
-            jpegView.Font = new System.Drawing.Font("Microsoft Sans Serif", BUTTON_FONT_SIZE, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, (byte)0);
+            jpegView.Font = new System.Drawing.Font("Microsoft Sans Serif", BUTTON_FONT_SIZE, 
+                System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, (byte)0);
             jpegView.Name = "jpegView";
             jpegView.Size = new System.Drawing.Size(LABEL_SIZE, LABEL_SIZE);
             jpegView.TabStop = false;
@@ -477,7 +345,8 @@ namespace ImageCompressionJMPEG
             mpegView.BackgroundImageLayout = System.Windows.Forms.ImageLayout.Zoom;
             mpegView.FlatAppearance.BorderSize = 0;
             mpegView.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
-            mpegView.Font = new System.Drawing.Font("Microsoft Sans Serif", BUTTON_FONT_SIZE, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            mpegView.Font = new System.Drawing.Font("Microsoft Sans Serif", BUTTON_FONT_SIZE, 
+                System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
             mpegView.Name = "mpegView";
             mpegView.Size = new System.Drawing.Size(LABEL_SIZE, LABEL_SIZE);
             mpegView.TabStop = false;
@@ -495,7 +364,8 @@ namespace ImageCompressionJMPEG
             grayscaleView.BackgroundImageLayout = System.Windows.Forms.ImageLayout.Zoom;
             grayscaleView.FlatAppearance.BorderSize = 0;
             grayscaleView.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
-            grayscaleView.Font = new System.Drawing.Font("Microsoft Sans Serif", BUTTON_FONT_SIZE, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            grayscaleView.Font = new System.Drawing.Font("Microsoft Sans Serif", BUTTON_FONT_SIZE, 
+                System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
             grayscaleView.Name = "mpegView";
             grayscaleView.Size = new System.Drawing.Size(LABEL_SIZE, LABEL_SIZE);
             grayscaleView.TabStop = false;
@@ -506,6 +376,333 @@ namespace ImageCompressionJMPEG
             grayscaleView.BackColor = themeBackgroundColorTwo;
             grayscaleView.Click += new System.EventHandler(this.grayscaleView_Click);
             motionVectorInfoPanel.Controls.Add(grayscaleView);
+            //
+            // CustomSliderPanel
+            //
+            customSliderPanel = new Panel();
+            customSliderPanel.BackColor = themeBackgroundColor;
+            //
+            // CustomSlider
+            //
+            customSlider = new CustomSlider(5, this.Width - PICTUREBOX_OFFSET * 3, PICTUREBOX_OFFSET,
+                new SolidBrush(Color.FromArgb(50, 100, 100, 100)), new SolidBrush(themeColor));
+            customSlider.Location = new Point(5, 5);
+            customSlider.Name = "customSlider";
+            customSlider.BackColor = Color.Black;
+            Image knobImage = Image.FromFile("..\\..\\img\\circleGrey.png");
+            Image knobHoverImage = Image.FromFile("..\\..\\img\\circleLightGreen.png");
+            customSlider.KnobImage = new Bitmap(knobImage);
+            customSlider.KnobHoverImage = new Bitmap(knobHoverImage);
+            customSlider.MouseUp += new MouseEventHandler(this.customSlider_MouseUp);
+            customSlider.MouseMove += new MouseEventHandler(this.customSlider_MouseMove);
+            customSliderPanel.Controls.Add(customSlider);
+            //
+            // videoControlPanel
+            //
+            videoControlPanel = new Panel();
+            videoControlPanel.BackColor = themeBackgroundColor;
+            //
+            // playBegin
+            //
+            playBegin = new CustomButton();
+            playBegin.Size = new Size(VIDEO_BUTTON_SIZE, VIDEO_BUTTON_SIZE);
+            playBegin.Location = new Point(0, 0);
+            playBegin.BackgroundImageLayout = ImageLayout.Zoom;
+            playBegin.FlatAppearance.BorderSize = 0;
+            playBegin.FlatStyle = FlatStyle.Flat;
+            playBegin.Font = new Font("Microsoft Sans Serif", 8.25f, FontStyle.Bold, GraphicsUnit.Point, (byte)0);
+            playBegin.Name = "playBegin";
+            playBegin.Text = "\u25B6";
+            playBegin.ForeColor = themeColor;
+            playBegin.UseMnemonic = false;
+            playBegin.UseVisualStyleBackColor = true;
+            playBegin.BackColor = themeBackgroundColor;
+            playBegin.Click += new EventHandler(this.playBegin_Click);
+            videoControlPanel.Controls.Add(playBegin);
+            //
+            // playEnd
+            //
+            playEnd = new CustomButton();
+            playEnd.Size = new Size(VIDEO_BUTTON_SIZE, VIDEO_BUTTON_SIZE);
+            playEnd.Location = new Point(LABEL_SIZE, 0);
+            playEnd.BackgroundImageLayout = ImageLayout.Zoom;
+            playEnd.FlatAppearance.BorderSize = 0;
+            playEnd.FlatStyle = FlatStyle.Flat;
+            playEnd.Font = new Font("Microsoft Sans Serif", 8.25f, FontStyle.Bold, GraphicsUnit.Point, (byte)0);
+            playEnd.Name = "playEnd";
+            playEnd.Text = "\u23F9";
+            playEnd.ForeColor = themeColor;
+            playEnd.UseMnemonic = false;
+            playEnd.UseVisualStyleBackColor = true;
+            playEnd.BackColor = themeBackgroundColor;
+            playEnd.Click += new EventHandler(this.playEnd_Click);
+            videoControlPanel.Controls.Add(playEnd);
+            //
+            // playPause
+            //
+            playPause = new CustomButton();
+            playPause.Size = new Size(VIDEO_BUTTON_SIZE, VIDEO_BUTTON_SIZE);
+            playPause.Location = new Point(0, 0);
+            playPause.BackgroundImageLayout = ImageLayout.Zoom;
+            playPause.FlatAppearance.BorderSize = 0;
+            playPause.FlatStyle = FlatStyle.Flat;
+            playPause.Font = new Font("Microsoft Sans Serif", 8.25f, FontStyle.Bold, GraphicsUnit.Point, (byte)0);
+            playPause.Name = "playPause";
+            playPause.Text = "❚❚";
+            playPause.ForeColor = themeColor;
+            playPause.UseMnemonic = false;
+            playPause.UseVisualStyleBackColor = true;
+            playPause.BackColor = themeBackgroundColor;
+            playPause.Click += new EventHandler(this.playPause_Click);
+        }
+
+        /// <summary>
+        /// Override WndProc to allow for resizing
+        /// </summary>
+        /// <param name="m">Message for WndProc</param>
+        protected override void WndProc(ref Message m)
+        {
+            base.WndProc(ref m);
+            if (m.Msg == WM_NCHITTEST)
+            {
+                m.Result = (IntPtr)(HT_CAPTION);
+            }
+        }
+
+        /// <summary>
+        /// Play frames when clicked
+        /// </summary>
+        /// <param name="sender">sender object</param>
+        /// <param name="e">event</param>
+        private void playBegin_Click(object sender, EventArgs e)
+        {
+            playing = true;
+            videoControlPanel.Controls.Add(playPause);
+            videoControlPanel.Controls.Remove(playBegin);
+            if (playTimer == null)
+            {
+                playTimer = new System.Windows.Forms.Timer();
+                playTimer.Tick += new EventHandler(playFrames);
+                playTimer.Interval = 33;
+            }
+            playTimer.Start();
+        }
+
+        /// <summary>
+        /// Pause play frame timer
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
+        private void playPause_Click(object sender, EventArgs e)
+        {
+            if (playing)
+            {
+                videoControlPanel.Controls.Remove(playPause);
+                videoControlPanel.Controls.Add(playBegin);
+                if (playTimer != null)
+                {
+                    playTimer.Stop();
+                }
+                playing = false;
+            }
+        }
+
+        /// <summary>
+        /// End play frame timer
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
+        private void playEnd_Click(object sender, EventArgs e)
+        {
+            if (playTimer != null)
+            {
+                playPause_Click(sender, e);
+                if (inputFrames.Length != 0)
+                {
+                    pictureBoxThree.Image = inputFrames[0];
+                }
+                currentFrame = -1;
+                customSlider.Value = 0;
+                customSlider.Refresh();
+            }
+        }
+
+        /// <summary>
+        /// Replace current frame with next frame if there is one
+        /// </summary>
+        /// <param name="sender">sender object</param>
+        /// <param name="e">event</param>
+        private void playFrames(object sender, EventArgs e)
+        {
+            if (currentFrame + 1 < inputFrames.Length)
+            {
+                pictureBoxThree.Image = inputFrames[++currentFrame];
+                customSlider.Value = (int)(((float)currentFrame / inputFrames.Length) * 100);
+                customSlider.Refresh();
+            }
+            else
+            {
+                currentFrame = -1;
+                if (playTimer != null)
+                {
+                    playTimer.Stop();
+                }
+            }
+        }
+
+        /// <summary>
+        /// Redraw form when resized
+        /// </summary>
+        /// <param name="sender">sender object</param>
+        /// <param name="e">event</param>
+        private void ImageCompressor_Resize(object sender, EventArgs e)
+        {
+            if (this.WindowState != FormWindowState.Minimized)
+            {
+                Control control = (Control)sender;
+                int w = control.Size.Width;
+                int h = control.Size.Height;
+                closeForm.Location = new Point(w - CLOSE_FORM_HORZ_OFFSET, 0);
+                panel.Size = new Size(w, h - PANEL_VERT_OFFSET);
+                maxForm.Location = new Point(w - MAX_FORM_HORZ_OFFSET, 0);
+                minForm.Location = new Point(w - MIN_FORM_HORZ_OFFSET, 0);
+                pictureBoxOne.Size = new Size(w / 2 - PICTUREBOX_OFFSET * 3 / 2, h - 54 - PICTUREBOX_OFFSET * 2);
+                pictureBoxTwo.Size = new Size(w / 2 - PICTUREBOX_OFFSET * 3 / 2, h - 54 - PICTUREBOX_OFFSET * 2);
+                pictureBoxTwo.Location = new Point(w / 2 + PICTUREBOX_OFFSET / 2, 27 + PICTUREBOX_OFFSET);
+                pictureBoxThree.Size = new Size(w - PICTUREBOX_OFFSET * 2, h - 54 - PICTUREBOX_OFFSET * 2 - VIDEO_PANEL_HEIGHT);
+                pictureBoxThree.Location = new Point(PICTUREBOX_OFFSET, 27 + PICTUREBOX_OFFSET);
+                pictureBoxGrayscaleLeft.Size = new Size(w / 2 - PICTUREBOX_OFFSET * 3 / 2, h - 54 - PICTUREBOX_OFFSET * 2);
+                pictureBoxGrayscaleRight.Size = new Size(w / 2 - PICTUREBOX_OFFSET * 3 / 2, h - 54 - PICTUREBOX_OFFSET * 2);
+                pictureBoxGrayscaleRight.Location = new Point(w / 2 + PICTUREBOX_OFFSET / 2, 27 + PICTUREBOX_OFFSET);
+                motionVectorInfoPanel.Width = w;
+                grayscaleView.Location = new System.Drawing.Point(motionVectorInfoPanel.Size.Width - LABEL_SIZE * 3 - PICTUREBOX_OFFSET, BUTTON_GAP);
+                jpegView.Location = new Point(motionVectorInfoPanel.Size.Width - LABEL_SIZE * 2 - PICTUREBOX_OFFSET, BUTTON_GAP);
+                mpegView.Location = new System.Drawing.Point(motionVectorInfoPanel.Size.Width - LABEL_SIZE - PICTUREBOX_OFFSET, BUTTON_GAP);
+                customSliderPanel.Size = new Size(w - PICTUREBOX_OFFSET * 2, PICTUREBOX_OFFSET);
+                customSliderPanel.Location = new Point(PICTUREBOX_OFFSET, 27 + PICTUREBOX_OFFSET + pictureBoxThree.Height);
+                customSlider.Size = new Size(w - PICTUREBOX_OFFSET * 2 - 10, 15);
+                customSlider.Width1 = w - PICTUREBOX_OFFSET * 3;
+                videoControlPanel.Size = new Size(w - PICTUREBOX_OFFSET * 2, VIDEO_PANEL_HEIGHT);
+                videoControlPanel.Location = new Point(PICTUREBOX_OFFSET, 27 + PICTUREBOX_OFFSET * 2 + pictureBoxThree.Height);
+            }
+        }
+
+        private void openToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            openImage();
+        }
+
+        /// <summary>
+        /// Handle OpenFileDialog cases
+        /// </summary>
+        private void openImage()
+        {
+            using (OpenFileDialog dialog = new OpenFileDialog())
+            {
+                dialog.Title = "Open Image";
+                dialog.Filter = "images|*.JPG; *.PNG; *.GJF; *.bmp; *.CJPG; *.CMPEG; * .CMPEG";
+                dialog.Multiselect = true;
+                if (dialog.ShowDialog() == DialogResult.OK)
+                {
+                    if (Compression.jView && Path.GetExtension(dialog.FileNames[0]).Equals(".CJPG"))
+                    {
+                        if (addToOne)
+                        {
+                            pictureBoxOne.Image = null;
+                            pictureBoxOne.Image = Compression.JPEGDecompression(SaveAndLoad.loadByteArray(File.ReadAllBytes(dialog.FileNames[0])));
+                        }
+                        else
+                        {
+                            pictureBoxTwo.Image = null;
+                            pictureBoxTwo.Image = Compression.JPEGDecompression(SaveAndLoad.loadByteArray(File.ReadAllBytes(dialog.FileNames[0])));
+                        }
+                    }
+                    else if (Compression.jView && Path.GetExtension(dialog.FileNames[0]).Equals(".CMPEG"))
+                    {
+                        pictureBoxOne.Image = null;
+                        pictureBoxOne.Image = Compression.MPEGDecompression(File.ReadAllBytes(dialog.FileNames[0]));
+                    }
+                    else if (Compression.jView)
+                    {
+                        if (addToOne)
+                        {
+                            pictureBoxOne.Image = null;
+                            pictureBoxOne.Image = new Bitmap(dialog.FileNames[0]);
+                        }
+                        else
+                        {
+                            pictureBoxTwo.Image = null;
+                            pictureBoxTwo.Image = new Bitmap(dialog.FileNames[0]);
+                        }
+                    }
+                    else
+                    {
+                        inputFrames = new Bitmap[dialog.FileNames.Length];
+                        for (int i = 0; i < dialog.FileNames.Length; i++)
+                        {
+                            inputFrames[i] = new Bitmap(dialog.FileNames[i]);
+                        }
+                        pictureBoxThree.Image = null;
+                        pictureBoxThree.Image = new Bitmap(dialog.FileNames[0]);
+                    }
+                    Refresh();
+                }
+                dialog.Dispose();
+            }
+        }
+
+        /// <summary>
+        /// Add an image to pictureBoxOne
+        /// </summary>
+        /// <param name="sender">sender object</param>
+        /// <param name="e"></param>
+        private void addImageOne(object sender, EventArgs e)
+        {
+            addToOne = true;
+            openImage();
+        }
+
+        /// <summary>
+        /// Remove an image from pictureBoxOne
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
+        private void removeImageOne(object sender, EventArgs e)
+        {
+            pictureBoxOne.Image = null;
+            Refresh();
+        }
+
+        /// <summary>
+        /// Add an image to pictureBoxTwo
+        /// </summary>
+        /// <param name="sender">sender object</param>
+        /// <param name="e"></param>
+        private void addImageTwo(object sender, EventArgs e)
+        {
+            addToOne = false;
+            openImage();
+        }
+
+        /// <summary>
+        /// Remove an image from pictureBoxOne
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
+        private void removeImageTwo(object sender, EventArgs e)
+        {
+            pictureBoxTwo.Image = null;
+            Refresh();
+        }
+
+        private void addImageThree(object sender, EventArgs e)
+        {
+            openImage();
+        }
+
+        private void removeImageThree(object sender, EventArgs e)
+        {
+            pictureBoxThree.Image = null;
         }
 
         /// <summary>
@@ -516,8 +713,13 @@ namespace ImageCompressionJMPEG
         private void jPEGToolStripMenuItem_Click(object sender, EventArgs e)
         {
             Bitmap bitmap = new Bitmap(pictureBoxOne.Image);
-            compressedBitmap = Compression.JPEGCompression(bitmap, pictureBoxOne.Image.Width, pictureBoxOne.Image.Height);
+            Bitmap grayscaleBitmap;
+            Bitmap grayscaleBitmapTwo;
+            jpegInfo = Compression.JPEGCompression(bitmap, pictureBoxOne.Image.Width,
+                pictureBoxOne.Image.Height, out grayscaleBitmap, out grayscaleBitmapTwo);
+            compressedBitmap = Compression.JPEGDecompression(jpegInfo);
             pictureBoxTwo.Image = new Bitmap(compressedBitmap);
+            updateGrayscale(grayscaleBitmap, grayscaleBitmapTwo);
         }
 
         private void saveToolStripMenuItem_Click(object sender, EventArgs e)
@@ -530,9 +732,9 @@ namespace ImageCompressionJMPEG
                 if (f != null)
                 {
                     BinaryWriter wr = new BinaryWriter(f);
-                    compressedByteArray = Compression.getCompressedByteArray();
-                    if (compressedByteArray != null)
+                    if (jpegInfo.originalHeight != 0)
                     {
+                        compressedByteArray = SaveAndLoad.saveIntoByteArray(jpegInfo);
                         wr.Write(compressedByteArray);
 //                        File.WriteAllBytes(saveFileDialog.FileName, compressedByteArray);
                     }
@@ -578,6 +780,218 @@ namespace ImageCompressionJMPEG
                 this.WindowState = FormWindowState.Maximized;
             }
         }
+
+        /// <summary>
+        /// Event handler for pictureBoxTwo's paint for drawing motion vectors
+        /// </summary>
+        /// <param name="sender">sender object</param>
+        /// <param name="e">event</param>
+        private void pictureBoxTwo_Paint(object sender, PaintEventArgs e)
+        {
+            if (motionVectors != null && pictureBoxOne.Image != null && pictureBoxTwo.Image != null && drawMV)
+            {
+                float heightScaler = (float)pictureBoxTwo.Size.Height / (float)pictureBoxOne.Image.Height;
+                float widthScaler = (float)pictureBoxTwo.Size.Width / (float)pictureBoxOne.Image.Width;
+                Pen pen = new Pen(Color.Red, 3);
+                pen.StartCap = System.Drawing.Drawing2D.LineCap.RoundAnchor;
+                pen.EndCap = System.Drawing.Drawing2D.LineCap.ArrowAnchor;
+                SolidBrush brush = new SolidBrush(Color.Red);
+                Pen pen2 = new Pen(Color.Red, 3);
+                int index = 0;
+                for (int y = 0; y < pictureBoxOne.Image.Height; y += 16)
+                {
+                    for (int x = 0; x < pictureBoxOne.Image.Width; x += 16)
+                    {
+                        if (y * heightScaler - (y + motionVectors[index].y) * heightScaler == 0 &&
+                            x * widthScaler - (x + motionVectors[index].x) * widthScaler == 0)
+                        {
+                            e.Graphics.DrawEllipse(pen, x * widthScaler, y * heightScaler, 3, 3);
+                        }
+                        else
+                        {
+                            e.Graphics.DrawLine(pen, x * widthScaler, y * heightScaler,
+                               (x + motionVectors[index].x) * widthScaler, (y + motionVectors[index].y) * heightScaler);
+                        }
+                        index++;
+                    }
+                }
+            }
+        }
+
+        /// <summary>
+        /// Draw motion vectors for display assuming both frame has same size
+        /// </summary>
+        /// <param name="sender">sender object</param>
+        /// <param name="e">event</param>
+        private void mVToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            if (pictureBoxOne.Image != null && pictureBoxTwo.Image != null)
+            {
+                Bitmap bitmapOne = new Bitmap(pictureBoxOne.Image);
+                Bitmap grayscaleBitmap;
+                Bitmap grayscaleBitmapTwo;
+                JPEGInfo iFrame = Compression.JPEGCompression(bitmapOne, 
+                    pictureBoxOne.Image.Width, pictureBoxOne.Image.Height, 
+                    out grayscaleBitmap, out grayscaleBitmapTwo);
+                compressedBitmap = Compression.JPEGDecompression(iFrame);
+                pictureBoxOne.Image = new Bitmap(compressedBitmap);
+                Bitmap bitmapTwo = new Bitmap(pictureBoxTwo.Image);
+                MPEGPrep mPEGPReg = Compression.MPEGMotionVector(compressedBitmap, bitmapTwo);
+                motionVectors = mPEGPReg.MotionVectorsY;
+                drawMV = true;
+                pictureBoxTwo.Image = null;
+                pictureBoxTwo.Image = new Bitmap(Compression.displayBitmap);
+                pictureBoxTwo.Refresh();
+                updateGrayscale(grayscaleBitmap, grayscaleBitmapTwo);
+            }
+        }
+
+        private void updateGrayscale(Bitmap grayscaleBitmap, Bitmap grayscaleBitmapTwo)
+        {
+            pictureBoxGrayscaleLeft.Image = grayscaleBitmap;
+            pictureBoxGrayscaleRight.Image = grayscaleBitmapTwo;
+        }
+
+        /// <summary>
+        /// MPEG two currently loaded frame
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
+        private void mPEGToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            //Bitmap bitmapOne = new Bitmap(pictureBoxOne.Image);
+            //Bitmap grayscaleBitmap;
+            //Bitmap grayscaleBitmapTwo;
+
+            //compressedBitmap = Compression.JPEGCompression(bitmapOne, pictureBoxOne.Image.Width, 
+            //    pictureBoxOne.Image.Height, out grayscaleBitmap, out grayscaleBitmapTwo);
+            //pictureBoxOne.Image = new Bitmap(compressedBitmap);
+            //Bitmap bitmapTwo = new Bitmap(pictureBoxTwo.Image);
+            //updateGrayscale(grayscaleBitmap, grayscaleBitmapTwo);
+        }
+
+        /// <summary>
+        /// Add search range by one limited by upper search range
+        /// </summary>
+        /// <param name="sender">sender object</param>
+        /// <param name="e">event</param>
+        private void addSearchAreaRange_Click(object sender, EventArgs e)
+        {
+            Compression.SearchArea = Int32.Parse(currentSearchAreaRange.Text) + 1;
+            if (Compression.SearchArea > Compression.UPPER_SEARCH_RANGE)
+            {
+                Compression.SearchArea = Compression.UPPER_SEARCH_RANGE;
+            }
+            else
+            {
+                currentSearchAreaRange.Text = "" + Compression.SearchArea;
+            }
+        }
+
+        /// <summary>
+        /// Subtract search range by one limited by lower search range
+        /// </summary>
+        /// <param name="sender">sender object</param>
+        /// <param name="e">event</param>
+        private void subtractSearchAreaRange_Click(object sender, EventArgs e)
+        {
+            Compression.SearchArea = Int32.Parse(currentSearchAreaRange.Text) - 1;
+            if (Compression.SearchArea < Compression.LOWER_SEARCH_RANGE)
+            {
+                Compression.SearchArea = Compression.LOWER_SEARCH_RANGE;
+            }
+            else
+            {
+                currentSearchAreaRange.Text = "" + Compression.SearchArea;
+            }
+        }
+
+        /// <summary>
+        /// Switch to jpeg view
+        /// </summary>
+        /// <param name="sender">sender object</param>
+        /// <param name="e">event</param>
+        private void jpegView_Click(object sender, EventArgs e)
+        {
+            panel.Controls.Add(pictureBoxOne);
+            panel.Controls.Add(pictureBoxTwo);
+            panel.Controls.Remove(pictureBoxThree);
+            panel.Controls.Remove(pictureBoxGrayscaleLeft);
+            panel.Controls.Remove(pictureBoxGrayscaleRight);
+            removeVideoPanel();
+            Compression.mView = false;
+            Compression.jView = true;
+            Compression.gView = false;
+        }
+
+        /// <summary>
+        /// Switch to mpeg view
+        /// </summary>
+        /// <param name="sender">sender object</param>
+        /// <param name="e">event</param>
+        private void mpegView_Click(object sender, EventArgs e)
+        {
+            panel.Controls.Remove(pictureBoxOne);
+            panel.Controls.Remove(pictureBoxTwo);
+            panel.Controls.Add(pictureBoxThree);
+            panel.Controls.Remove(pictureBoxGrayscaleLeft);
+            panel.Controls.Remove(pictureBoxGrayscaleRight);
+            addVideoPanel();
+            Compression.mView = true;
+            Compression.jView = false;
+            Compression.gView = false;
+        }
+
+        /// <summary>
+        /// Grayscale view
+        /// </summary>
+        /// <param name="sender">sender object</param>
+        /// <param name="e">event</param>
+        private void grayscaleView_Click(object sender, EventArgs e)
+        {
+            panel.Controls.Remove(pictureBoxOne);
+            panel.Controls.Remove(pictureBoxTwo);
+            panel.Controls.Remove(pictureBoxThree);
+            panel.Controls.Add(pictureBoxGrayscaleLeft);
+            panel.Controls.Add(pictureBoxGrayscaleRight);
+            removeVideoPanel();
+            Compression.mView = false;
+            Compression.jView = false;
+            Compression.gView = true;
+        }
+
+        private void addVideoPanel()
+        {
+            panel.Controls.Add(customSliderPanel);
+            panel.Controls.Add(videoControlPanel);
+        }
+
+        private void removeVideoPanel()
+        {
+            panel.Controls.Remove(customSliderPanel);
+            panel.Controls.Remove(videoControlPanel);
+        }
+
+        /// <summary>
+        /// Handle customSlider mouse up event
+        /// </summary>
+        /// <param name="sender">sender object</param>
+        /// <param name="e">event</param>
+        private void customSlider_MouseUp(object sender, EventArgs e)
+        {
+            sliderValue = customSlider.Value;
+        }
+
+        /// <summary>
+        /// Handle customSlider mouse move event
+        /// </summary>
+        /// <param name="sender">sender object</param>
+        /// <param name="e">event</param>
+        private void customSlider_MouseMove(object sender, EventArgs e)
+        {
+            sliderValue = customSlider.Value;
+        }
+
         private class MyRenderer : ToolStripProfessionalRenderer
         {
             public MyRenderer(Color themeBackgroundColor) : base(new MyColors(themeBackgroundColor)) { }
@@ -711,168 +1125,6 @@ namespace ImageCompressionJMPEG
             videoToolStripMenuItem.ForeColor = themeColor;
             mVToolStripMenuItem.ForeColor = themeColor;
         }
-
-        /// <summary>
-        /// Event handler for pictureBoxTwo's paint for drawing motion vectors
-        /// </summary>
-        /// <param name="sender">sender object</param>
-        /// <param name="e">event</param>
-        private void pictureBoxTwo_Paint(object sender, PaintEventArgs e)
-        {
-            if (motionVectors != null && pictureBoxOne.Image != null && pictureBoxTwo.Image != null && drawMV)
-            {
-                float heightScaler = (float)pictureBoxTwo.Size.Height / (float)pictureBoxOne.Image.Height;
-                float widthScaler = (float)pictureBoxTwo.Size.Width / (float)pictureBoxOne.Image.Width;
-                Pen pen = new Pen(Color.Red, 3);
-                pen.StartCap = System.Drawing.Drawing2D.LineCap.RoundAnchor;
-                pen.EndCap = System.Drawing.Drawing2D.LineCap.ArrowAnchor;
-                SolidBrush brush = new SolidBrush(Color.Red);
-                Pen pen2 = new Pen(Color.Red, 3);
-                int index = 0;
-                for (int y = 0; y < pictureBoxOne.Image.Height; y += 16)
-                {
-                    for (int x = 0; x < pictureBoxOne.Image.Width; x += 16)
-                    {
-                        if (y * heightScaler - (y + motionVectors[index].y) * heightScaler == 0 &&
-                            x * widthScaler - (x + motionVectors[index].x) * widthScaler == 0)
-                        {
-                            e.Graphics.DrawEllipse(pen, x * widthScaler, y * heightScaler, 3, 3);
-                        }
-                        else
-                        {
-                            e.Graphics.DrawLine(pen, x * widthScaler, y * heightScaler,
-                               (x + motionVectors[index].x) * widthScaler, (y + motionVectors[index].y) * heightScaler);
-                        }
-                        index++;
-                    }
-                }
-            }
-        }
-
-        /// <summary>
-        /// Draw motion vectors for display assuming both frame has same size
-        /// </summary>
-        /// <param name="sender">sender object</param>
-        /// <param name="e">event</param>
-        private void mVToolStripMenuItem_Click(object sender, EventArgs e)
-        {
-            if (pictureBoxOne.Image != null && pictureBoxTwo.Image != null)
-            {
-                Bitmap bitmapOne = new Bitmap(pictureBoxOne.Image);
-                compressedBitmap = Compression.JPEGCompression(bitmapOne, pictureBoxOne.Image.Width, pictureBoxOne.Image.Height);
-                pictureBoxOne.Image = new Bitmap(compressedBitmap);
-                Bitmap bitmapTwo = new Bitmap(pictureBoxTwo.Image);
-                Bitmap grayscaleBitmap;
-                Bitmap grayscaleBitmapTwo;
-                MPEGPrep mPEGPReg = Compression.MPEGMotionVector(compressedBitmap, bitmapTwo, out grayscaleBitmap, out grayscaleBitmapTwo);
-                motionVectors = mPEGPReg.MotionVectorsY;
-                drawMV = true;
-                pictureBoxTwo.Image = null;
-                pictureBoxTwo.Image = new Bitmap(Compression.displayBitmap);
-                pictureBoxGrayscaleLeft.Image = grayscaleBitmap;
-                pictureBoxGrayscaleRight.Image = grayscaleBitmapTwo;
-                pictureBoxTwo.Refresh();
-                pictureBoxGrayscaleLeft.Refresh();
-                pictureBoxGrayscaleRight.Refresh();
-            }
-        }
-
-        /// <summary>
-        /// MPEG two currently loaded frame
-        /// </summary>
-        /// <param name="sender"></param>
-        /// <param name="e"></param>
-        private void mPEGToolStripMenuItem_Click(object sender, EventArgs e)
-        {
-            Bitmap bitmapOne = new Bitmap(pictureBoxOne.Image);
-            compressedBitmap = Compression.JPEGCompression(bitmapOne, pictureBoxOne.Image.Width, pictureBoxOne.Image.Height);
-            pictureBoxOne.Image = new Bitmap(compressedBitmap);
-            Bitmap bitmapTwo = new Bitmap(pictureBoxTwo.Image);
-
-        }
-
-        /// <summary>
-        /// Add search range by one limited by upper search range
-        /// </summary>
-        /// <param name="sender">sender object</param>
-        /// <param name="e">event</param>
-        private void addSearchAreaRange_Click(object sender, EventArgs e)
-        {
-            Compression.SearchArea = Int32.Parse(currentSearchAreaRange.Text) + 1;
-            if (Compression.SearchArea > Compression.UPPER_SEARCH_RANGE)
-            {
-                Compression.SearchArea = Compression.UPPER_SEARCH_RANGE;
-            }
-            else
-            {
-                currentSearchAreaRange.Text = "" + Compression.SearchArea;
-            }
-        }
-
-        /// <summary>
-        /// Subtract search range by one limited by lower search range
-        /// </summary>
-        /// <param name="sender">sender object</param>
-        /// <param name="e">event</param>
-        private void subtractSearchAreaRange_Click(object sender, EventArgs e)
-        {
-            Compression.SearchArea = Int32.Parse(currentSearchAreaRange.Text) - 1;
-            if (Compression.SearchArea < Compression.LOWER_SEARCH_RANGE)
-            {
-                Compression.SearchArea = Compression.LOWER_SEARCH_RANGE;
-            }
-            else
-            {
-                currentSearchAreaRange.Text = "" + Compression.SearchArea;
-            }
-        }
-
-        /// <summary>
-        /// Switch to jpeg view
-        /// </summary>
-        /// <param name="sender">sender object</param>
-        /// <param name="e">event</param>
-        private void jpegView_Click(object sender, EventArgs e)
-        {
-            panel.Controls.Add(pictureBoxOne);
-            panel.Controls.Add(pictureBoxTwo);
-            panel.Controls.Remove(pictureBoxThree);
-            panel.Controls.Remove(pictureBoxGrayscaleLeft);
-            panel.Controls.Remove(pictureBoxGrayscaleRight);
-            Compression.mView = false;
-            Compression.jView = true;
-            Compression.gView = false;
-        }
-
-        /// <summary>
-        /// Switch to mpeg view
-        /// </summary>
-        /// <param name="sender">sender object</param>
-        /// <param name="e">event</param>
-        private void mpegView_Click(object sender, EventArgs e)
-        {
-            panel.Controls.Remove(pictureBoxOne);
-            panel.Controls.Remove(pictureBoxTwo);
-            panel.Controls.Add(pictureBoxThree);
-            panel.Controls.Remove(pictureBoxGrayscaleLeft);
-            panel.Controls.Remove(pictureBoxGrayscaleRight);
-            Compression.mView = true;
-            Compression.jView = false;
-            Compression.gView = false;
-        }
-
-        private void grayscaleView_Click(object sender, EventArgs e)
-        {
-            panel.Controls.Remove(pictureBoxOne);
-            panel.Controls.Remove(pictureBoxTwo);
-            panel.Controls.Remove(pictureBoxThree);
-            panel.Controls.Add(pictureBoxGrayscaleLeft);
-            panel.Controls.Add(pictureBoxGrayscaleRight);
-            Compression.mView = false;
-            Compression.jView = false;
-            Compression.gView = true;
-        }
-
 
     }
 }

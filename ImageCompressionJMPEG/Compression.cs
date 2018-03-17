@@ -71,9 +71,40 @@ namespace ImageCompressionJMPEG
     }
 
     /// <summary>
-    /// Structure for holding a two-dimensional vector
+    /// Holds all information required for saving a custom jpeg compressed image
     /// </summary>
-    public struct Vector
+    public struct JPEGInfo
+    {
+        public int originalWidth;
+        public int originalHeight;
+        public YCrCb qYCrCb;
+
+        public JPEGInfo(int originalWidth, int originalHeight, YCrCb qYCrCb)
+        {
+            this.originalWidth = originalWidth;
+            this.originalHeight = originalHeight;
+            this.qYCrCb = qYCrCb;
+        }
+    }
+
+    public struct MPEGInfo
+    {
+        public int originalWidth;
+        public int originalHeight;
+        public YCrCb[] frames;
+
+        public MPEGInfo(int originalWidth, int originalHeight, YCrCb[] frames)
+        {
+            this.originalWidth = originalWidth;
+            this.originalHeight = originalHeight;
+            this.frames = frames;
+        }
+    }
+
+        /// <summary>
+        /// Structure for holding a two-dimensional vector
+        /// </summary>
+        public struct Vector
     {
         public int x;
         public int y;
@@ -288,7 +319,7 @@ namespace ImageCompressionJMPEG
         /// <param name="width">Original bitmap width</param>
         /// <param name="height">Original bitmap height</param>
         /// <returns></returns>
-        public static Bitmap JPEGCompression(Bitmap bitmap, int width, int height)
+        public static JPEGInfo JPEGCompression(Bitmap bitmap, int width, int height, out Bitmap grayscaleBitmap, out Bitmap grayscaleBitmapTwo)
         {
             int yDivider = 8;
             int crCbDivider = 8;
@@ -301,16 +332,11 @@ namespace ImageCompressionJMPEG
             subYCrCb = ArrayTransform.padChannels(subYCrCb, yDivider, crCbDivider);
             DYCrCb dctYCrCb = DiscreteCosineTransform(subYCrCb);
             YCrCb qYCrCb = QuantizationAndZigzag(dctYCrCb);
-            // saving
-            SaveAndLoad.JPEGSaveInfo jpegSaveInfo = new SaveAndLoad.JPEGSaveInfo(originalWidth, originalHeight, qYCrCb);
-            compressedByteArray = SaveAndLoad.saveIntoByteArray(jpegSaveInfo);
-            // reverse progress for display purpose
-            DYCrCb iQYCrCb = InverseQuantizationAndZigzag(qYCrCb);
-            YCrCb iYCrCb = InverseDiscreteCosineTransform(iQYCrCb);
-            iYCrCb = ArrayTransform.unpadChannels(iYCrCb, yDivider, crCbDivider);
-            YCrCb fillediYCrCb = fillSubSample(iYCrCb);
-            Bitmap result = convertToBitmap(fillediYCrCb);
-            return result;
+            // grayscale channel display
+            grayscaleBitmap = convertToGrayscaleBitmap(subYCrCb.Cr, subYCrCb.crCbWidth, subYCrCb.crCbHeight);
+            grayscaleBitmapTwo = convertToGrayscaleBitmap(subYCrCb.Cb, subYCrCb.crCbWidth, subYCrCb.crCbHeight);
+            return new JPEGInfo(originalWidth, originalHeight, qYCrCb);
+            
         }
 
         /// <summary>
@@ -318,15 +344,13 @@ namespace ImageCompressionJMPEG
         /// </summary>
         /// <param name="inputArray"></param>
         /// <returns></returns>
-        public static Bitmap JPEGDecompression(byte[] inputArray)
+        public static Bitmap JPEGDecompression(JPEGInfo jpegInfo)
         {
             int yDivider = 8;
             int crCbDivder = 8;
-            currentQuantizationTable = quantizationTableJPEG;
-            SaveAndLoad.JPEGSaveInfo jpegSaveInfo = SaveAndLoad.loadByteArray(inputArray);
-            originalHeight = jpegSaveInfo.originalHeight;
-            originalWidth = jpegSaveInfo.originalWidth;
-            YCrCb qYCrCb = jpegSaveInfo.qYCrCb;
+            originalHeight = jpegInfo.originalHeight;
+            originalWidth = jpegInfo.originalWidth;
+            YCrCb qYCrCb = jpegInfo.qYCrCb;
             DYCrCb iQYCrCb = InverseQuantizationAndZigzag(qYCrCb);
             YCrCb iYCrCb = InverseDiscreteCosineTransform(iQYCrCb);
             iYCrCb = ArrayTransform.unpadChannels(iYCrCb, yDivider, crCbDivder);
@@ -335,13 +359,36 @@ namespace ImageCompressionJMPEG
             return result;
         }
 
+
+        ///// <summary>
+        ///// Decompress JPEG into bitmap
+        ///// </summary>
+        ///// <param name="inputArray"></param>
+        ///// <returns></returns>
+        //public static Bitmap JPEGDecompression(byte[] inputArray)
+        //{
+        //    int yDivider = 8;
+        //    int crCbDivder = 8;
+        //    currentQuantizationTable = quantizationTableJPEG;
+        //    JPEGInfo jpegSaveInfo = SaveAndLoad.loadByteArray(inputArray);
+        //    originalHeight = jpegSaveInfo.originalHeight;
+        //    originalWidth = jpegSaveInfo.originalWidth;
+        //    YCrCb qYCrCb = jpegSaveInfo.qYCrCb;
+        //    DYCrCb iQYCrCb = InverseQuantizationAndZigzag(qYCrCb);
+        //    YCrCb iYCrCb = InverseDiscreteCosineTransform(iQYCrCb);
+        //    iYCrCb = ArrayTransform.unpadChannels(iYCrCb, yDivider, crCbDivder);
+        //    YCrCb fillediYCrCb = fillSubSample(iYCrCb);
+        //    Bitmap result = convertToBitmap(fillediYCrCb);
+        //    return result;
+        //}
+
         /// <summary>
         /// Motion vector for two frame and prepares for MPEG
         /// </summary>
         /// <param name="referenceArray">Reference frame</param>
         /// <param name="resultArray">Result frame</param>
         /// <returns>MPEGPrep structure</returns>
-        public static MPEGPrep MPEGMotionVector(Bitmap reference, Bitmap current, out Bitmap grayscaleBitmap, out Bitmap grayscaleBitmapTwo)
+        public static MPEGPrep MPEGMotionVector(Bitmap reference, Bitmap current)
         {
             numOfFrame = 2;
             originalHeight = reference.Height;
@@ -375,20 +422,7 @@ namespace ImageCompressionJMPEG
             diffBlockY = DiffBlock(motionVectorsY, rIYCrCb.Y, cSubYCrCb.Y, width, height, macroSizeY);
             diffBlockCr = DiffBlock(motionVectorsCr, rIYCrCb.Cr, cSubYCrCb.Cr, cSubYCrCb.crCbWidth, cSubYCrCb.crCbHeight, macroSizeCrCb);
             diffBlockCb = DiffBlock(motionVectorsCb, rIYCrCb.Cb, cSubYCrCb.Cb, cSubYCrCb.crCbWidth, cSubYCrCb.crCbHeight, macroSizeCrCb);
-
-            //for (int i = 0; i < diffBlockY.Length; i++)
-            //{
-            //    diffBlockY[i] += 28;
-            //}
-            //for (int i = 0; i < diffBlockCr.Length; i++)
-            //{
-            //    diffBlockCr[i] += 28;
-            //}
-
-            //grayscaleBitmap = convertToGrayscaleBitmap(ArrayTransform.doubleArrayToByte(diffBlockY), width, height);
-            //grayscaleBitmapTwo = convertToGrayscaleBitmap(ArrayTransform.doubleArrayToByte(diffBlockCr), cSubYCrCb.crCbWidth, cSubYCrCb.crCbHeight);
-
-            // to be fixed dimension
+                        
             DYCrCb mDiffBlocks = new DYCrCb(diffBlockY, diffBlockCr, diffBlockCb, cSubYCrCb.yHeight, cSubYCrCb.yWidth, cSubYCrCb.crCbHeight, cSubYCrCb.crCbWidth);
             DYCrCb dctMDiffBlocks = DiscreteCosineTransform(mDiffBlocks);
             YCrCb qMDiffBlocks = QuantizationAndZigzag(dctMDiffBlocks);
@@ -443,12 +477,118 @@ namespace ImageCompressionJMPEG
 
             displayBitmap = convertToBitmap(filledIDiffBlocks);
 
-            grayscaleBitmap = convertToGrayscaleBitmap(currentY, iMDiffBlocks.yWidth, iMDiffBlocks.yHeight);
-            grayscaleBitmapTwo = convertToGrayscaleBitmap(currentCr, iMDiffBlocks.crCbWidth, iMDiffBlocks.crCbHeight);
-
-
             MPEGPrep mPEGPrep = new MPEGPrep(motionVectorsY, motionVectorsCr, motionVectorsCb, filledIDiffBlocks);
             return mPEGPrep;
+        }
+
+        /// <summary>
+        /// Find motion vector for a given reference and current frame
+        /// </summary>
+        /// <param name="cSubYCrCb">Current frame</param>
+        /// <param name="rIYCrCb">Reference frame</param>
+        /// <param name="width">width of image</param>
+        /// <param name="height">height of image</param>
+        /// <param name="motionVectorsY">motion vectors for Y channel</param>
+        /// <param name="motionVectorsCr">motion vectors for Cr channel</param>
+        /// <param name="motionVectorsCb">motion vectors for Cb channel</param>
+        public static void motionVector(YCrCb cSubYCrCb, YCrCb rIYCrCb, int width, int height, out Vector[] motionVectorsY, out Vector[] motionVectorsCr, out Vector[] motionVectorsCb)
+        {
+            motionVectorsY = new Vector[width / macroSizeY * height / macroSizeY];
+            motionVectorsCr = new Vector[motionVectorsY.Length];
+            motionVectorsCb = new Vector[motionVectorsY.Length];
+            int indexY = 0;
+            int indexCr = 0;
+            int indexCb = 0;
+            for (int y = 0; y < height; y += macroSizeCrCb)
+            {
+                for (int x = 0; x < width; x += macroSizeCrCb)
+                {
+                    Vector motionVectorY = new Vector(0, 0);
+                    Vector motionVectorCr = new Vector(0, 0);
+                    Vector motionVectorCb = new Vector(0, 0);
+                    double currentMinY = Double.MaxValue;
+                    double centralMinY = Double.MaxValue;
+                    double currentMinCr = Double.MaxValue;
+                    double centralMinCr = Double.MaxValue;
+                    double currentMinCb = Double.MaxValue;
+                    double centralMinCb = Double.MaxValue;
+                    for (int j = -searchArea; j <= searchArea; j++)
+                    {
+                        for (int i = -searchArea; i <= searchArea; i++)
+                        {
+                            if (x + i >= 0 && y + j >= 0 && x + i + macroSizeY - 1 < width && y + j + macroSizeY - 1 < height)
+                            {
+                                if (x < rIYCrCb.crCbWidth && y < rIYCrCb.crCbHeight && x + i + macroSizeCrCb - 1 < rIYCrCb.crCbWidth && y + j + macroSizeCrCb - 1 < rIYCrCb.crCbHeight)
+                                {
+                                    double tempMinCr;
+                                    double tempMinCb;
+                                    tempMinCr = MAD(macroSizeCrCb, x, y, i, j, cSubYCrCb.Cr, rIYCrCb.Cr, rIYCrCb.crCbWidth, rIYCrCb.crCbHeight);
+                                    tempMinCb = MAD(macroSizeCrCb, x, y, i, j, cSubYCrCb.Cb, rIYCrCb.Cb, rIYCrCb.crCbWidth, rIYCrCb.crCbHeight);
+                                    if (i == 0 && j == 0)
+                                    {
+                                        centralMinCr = tempMinCr;
+                                        centralMinCb = tempMinCb;
+                                    }
+                                    if (tempMinCr < currentMinCr)
+                                    {
+                                        currentMinCr = tempMinCr;
+                                        motionVectorCr.x = i;
+                                        motionVectorCr.y = j;
+                                    }
+                                    if (tempMinCb < currentMinCb)
+                                    {
+                                        currentMinCb = tempMinCb;
+                                        motionVectorCb.x = i;
+                                        motionVectorCb.y = j;
+                                    }
+                                }
+                                if (x % macroSizeY == 0 && y % macroSizeY == 0 && x + i - 1 < width && y + j - 1 < height)
+                                {
+                                    double tempMinY;
+                                    tempMinY = MAD(macroSizeY, x, y, i, j, cSubYCrCb.Y, rIYCrCb.Y, width, height);
+                                    if (i == 0 && j == 0)
+                                    {
+                                        centralMinY = tempMinY;
+                                    }
+                                    if (tempMinY < currentMinY)
+                                    {
+                                        currentMinY = tempMinY;
+                                        motionVectorY.x = i;
+                                        motionVectorY.y = j;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    if (x % macroSizeY == 0 && y % macroSizeY == 0)
+                    {
+                        if (Math.Round(currentMinY) == Math.Round(centralMinY))
+                        {
+                            motionVectorY.x = 0;
+                            motionVectorY.y = 0;
+                        }
+                        motionVectorsY[indexY++] = motionVectorY;
+                    }
+                    if (x < rIYCrCb.crCbWidth && y < rIYCrCb.crCbHeight)
+                    {
+                        if (currentMinCr == centralMinCr)
+                        {
+                            motionVectorCr.x = 0;
+                            motionVectorCr.y = 0;
+                        }
+                        motionVectorsCr[indexCr++] = motionVectorCr;
+                    }
+                    if (x < rIYCrCb.crCbWidth && y < rIYCrCb.crCbHeight)
+                    {
+                        if (currentMinCb == centralMinCb)
+                        {
+                            motionVectorCb.x = 0;
+                            motionVectorCb.y = 0;
+                        }
+                        motionVectorsCb[indexCb++] = motionVectorCb;
+                    }
+                }
+            }
         }
 
         public static Bitmap MPEGDecompression(byte[] inputArray)
@@ -1298,104 +1438,5 @@ namespace ImageCompressionJMPEG
             return result;
         }
 
-        public static void motionVector(YCrCb cSubYCrCb, YCrCb rIYCrCb, int width, int height, out Vector[] motionVectorsY, out Vector[] motionVectorsCr, out Vector[] motionVectorsCb)
-        {
-            motionVectorsY = new Vector[width / macroSizeY * height / macroSizeY];
-            motionVectorsCr = new Vector[motionVectorsY.Length];
-            motionVectorsCb = new Vector[motionVectorsY.Length];
-            int indexY = 0;
-            int indexCr = 0;
-            int indexCb = 0;
-            for (int y = 0; y < height; y += macroSizeCrCb)
-            {
-                for (int x = 0; x < width; x += macroSizeCrCb)
-                {
-                    Vector motionVectorY = new Vector(0, 0);
-                    Vector motionVectorCr = new Vector(0, 0);
-                    Vector motionVectorCb = new Vector(0, 0);
-                    double currentMinY = Double.MaxValue;
-                    double centralMinY = Double.MaxValue;
-                    double currentMinCr = Double.MaxValue;
-                    double centralMinCr = Double.MaxValue;
-                    double currentMinCb = Double.MaxValue;
-                    double centralMinCb = Double.MaxValue;
-                    for (int j = -searchArea; j <= searchArea; j++)
-                    {
-                        for (int i = -searchArea; i <= searchArea; i++)
-                        {
-                            if (x + i >= 0 && y + j >= 0 && x + i + macroSizeY - 1 < width && y + j + macroSizeY - 1 < height)
-                            {
-                                if (x < rIYCrCb.crCbWidth && y < rIYCrCb.crCbHeight && x + i + macroSizeCrCb - 1 < rIYCrCb.crCbWidth && y + j + macroSizeCrCb - 1 < rIYCrCb.crCbHeight)
-                                {
-                                    double tempMinCr;
-                                    double tempMinCb;
-                                    tempMinCr = MAD(macroSizeCrCb, x, y, i, j, cSubYCrCb.Cr, rIYCrCb.Cr, rIYCrCb.crCbWidth, rIYCrCb.crCbHeight);
-                                    tempMinCb = MAD(macroSizeCrCb, x, y, i, j, cSubYCrCb.Cb, rIYCrCb.Cb, rIYCrCb.crCbWidth, rIYCrCb.crCbHeight);
-                                    if (i == 0 && j == 0)
-                                    {
-                                        centralMinCr = tempMinCr;
-                                        centralMinCb = tempMinCb;
-                                    }
-                                    if (tempMinCr < currentMinCr)
-                                    {
-                                        currentMinCr = tempMinCr;
-                                        motionVectorCr.x = i;
-                                        motionVectorCr.y = j;
-                                    }
-                                    if (tempMinCb < currentMinCb)
-                                    {
-                                        currentMinCb = tempMinCb;
-                                        motionVectorCb.x = i;
-                                        motionVectorCb.y = j;
-                                    }
-                                }
-                                if (x % macroSizeY == 0 && y % macroSizeY == 0 && x + i - 1 < width && y + j - 1 < height)
-                                {
-                                    double tempMinY;
-                                    tempMinY = MAD(macroSizeY, x, y, i, j, cSubYCrCb.Y, rIYCrCb.Y, width, height);
-                                    if (i == 0 && j == 0)
-                                    {
-                                        centralMinY = tempMinY;
-                                    }
-                                    if (tempMinY < currentMinY)
-                                    {
-                                        currentMinY = tempMinY;
-                                        motionVectorY.x = i;
-                                        motionVectorY.y = j;
-                                    }
-                                }
-                            }
-                        }
-                    }
-                    if (x % macroSizeY == 0 && y % macroSizeY == 0)
-                    {
-                        if (Math.Round(currentMinY) == Math.Round(centralMinY))
-                        {
-                            motionVectorY.x = 0;
-                            motionVectorY.y = 0;
-                        }
-                        motionVectorsY[indexY++] = motionVectorY;
-                    }
-                    if (x < rIYCrCb.crCbWidth && y < rIYCrCb.crCbHeight)
-                    {
-                        if (currentMinCr == centralMinCr)
-                        {
-                            motionVectorCr.x = 0;
-                            motionVectorCr.y = 0;
-                        }
-                        motionVectorsCr[indexCr++] = motionVectorCr;
-                    }
-                    if (x < rIYCrCb.crCbWidth && y < rIYCrCb.crCbHeight)
-                    {
-                        if (currentMinCb == centralMinCb)
-                        {
-                            motionVectorCb.x = 0;
-                            motionVectorCb.y = 0;
-                        }
-                        motionVectorsCb[indexCb++] = motionVectorCb;
-                    }
-                }
-            }
-        }
     }
 }

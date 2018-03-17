@@ -6,31 +6,17 @@ using System.Threading.Tasks;
 
 namespace ImageCompressionJMPEG
 {
+    /// <summary>
+    /// Handle all saving and loading related tasks
+    /// </summary>
     class SaveAndLoad
     {
-        /// <summary>
-        /// Holds all information required for saving a custom jpeg compressed image
-        /// </summary>
-        public struct JPEGSaveInfo
-        {
-            public int originalWidth;
-            public int originalHeight;
-            public YCrCb qYCrCb;
-
-            public JPEGSaveInfo(int originalWidth, int originalHeight, YCrCb qYCrCb)
-            {
-                this.originalWidth = originalWidth;
-                this.originalHeight = originalHeight;
-                this.qYCrCb = qYCrCb;
-            }
-        }
-
         /// <summary>
         /// prepare and return save byte array for custom jpeg compressed image
         /// </summary>
         /// <param name="jpegSaveInfo">JPEGSaveInfo object</param>
         /// <returns>Array</returns>
-        public static byte[] saveIntoByteArray(JPEGSaveInfo jpegSaveInfo)
+        public static byte[] saveIntoByteArray(JPEGInfo jpegSaveInfo)
         {
             byte[] widthByteArray = BitConverter.GetBytes(jpegSaveInfo.originalWidth);
             byte[] heightByteArray = BitConverter.GetBytes(jpegSaveInfo.originalHeight);
@@ -51,7 +37,12 @@ namespace ImageCompressionJMPEG
             return compressedByteArray;
         }
 
-        public static JPEGSaveInfo loadByteArray(byte[] savedArray)
+        public static byte[] saveIntoByteArray(MPEGInfo mpegSaveInfo)
+        {
+            return null;
+        }
+
+        public static JPEGInfo loadByteArray(byte[] savedArray)
         {
             savedArray = RLCompression.ModifiedRunLengthDecompress(savedArray);
             byte[] widthByteArray = new byte[Compression.intToByteSize];
@@ -79,7 +70,7 @@ namespace ImageCompressionJMPEG
             System.Buffer.BlockCopy(savedArray, Compression.intToByteSize * 2 + qY.Length +
                                     qCr.Length, qCb, 0, qCb.Length);
             YCrCb qYCrCb = new YCrCb(qY, qCr, qCb, height, width, reducedHeight, reducedWidth);
-            return new JPEGSaveInfo(originalWidth, originalHeight, qYCrCb);
+            return new JPEGInfo(originalWidth, originalHeight, qYCrCb);
         }
     }
 }
