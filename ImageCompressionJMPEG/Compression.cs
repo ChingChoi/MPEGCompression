@@ -221,6 +221,9 @@ namespace ImageCompressionJMPEG
             72, 92, 95, 98, 112, 100, 103, 99
         };
 
+        /// <summary>
+        /// Quantization table for MPEG
+        /// </summary>
         private static double[] quantizationTableMPEG = new double[64]
         {
             8, 8, 8, 8, 8, 8, 8, 8,
@@ -332,6 +335,10 @@ namespace ImageCompressionJMPEG
         /// Will hold the currently selected quantization table depending on jpeg or mpeg
         /// </summary>
         public static double[] currentQuantizationTable;
+
+        /// <summary>
+        /// Getter and setter for searchArea
+        /// </summary>
         public static int SearchArea { get => searchArea; set => searchArea = value; }
 
         /// <summary>
@@ -357,6 +364,12 @@ namespace ImageCompressionJMPEG
             return new JPEGInfo(originalWidth, originalHeight, qYCrCb);
         }
 
+        /// <summary>
+        /// Grayscale of original image
+        /// </summary>
+        /// <param name="bitmap">image bitmap</param>
+        /// <param name="grayscaleBitmap">grayscape Cr bitmap</param>
+        /// <param name="grayscaleBitmapTwo">grayscape Cb bitmap</param>
         public static void Grayscale(Bitmap bitmap, out Bitmap grayscaleBitmap, out Bitmap grayscaleBitmapTwo)
         {
             YCrCb yCrCb = convertToYCrCb(bitmap);
@@ -484,6 +497,12 @@ namespace ImageCompressionJMPEG
             return new PFrame(filledIDiffBlocks, motionVectorsY, motionVectorsCr, motionVectorsCb);
         }
 
+        /// <summary>
+        /// MPEG motion vector
+        /// </summary>
+        /// <param name="reference">Reference frame</param>
+        /// <param name="current">Current frame</param>
+        /// <returns>P Frame</returns>
         public static PFrame MPEGMotionVector(YCrCb reference, Bitmap current)
         {
             originalHeight = current.Height;
@@ -656,6 +675,11 @@ namespace ImageCompressionJMPEG
             return new MPEGInfo(inputFrames[0].Width, inputFrames[0].Height, iFrames, pFrames);
         }
 
+        /// <summary>
+        /// MPEG Decompression
+        /// </summary>
+        /// <param name="mpegInfo">MPEGInfo for mpeg Decompression</param>
+        /// <returns>Decompressed bitmaps</returns>
         public static Bitmap[] MPEGDecompression(MPEGInfo mpegInfo)
         {
             originalHeight = mpegInfo.originalHeight;
@@ -845,6 +869,18 @@ namespace ImageCompressionJMPEG
         }
 
 
+        /// <summary>
+        /// Inverse differences block thread method
+        /// </summary>
+        /// <param name="current">resulting current frame</param>
+        /// <param name="curBlock">current block the thread will process from</param>
+        /// <param name="numOfBlock">number of block the thread wlil process</param>
+        /// <param name="motionVectors">motion vectors</param>
+        /// <param name="reference">reference frame</param>
+        /// <param name="diffBlock">differences block frame</param>
+        /// <param name="width">width of image</param>
+        /// <param name="height">height of image</param>
+        /// <param name="N">DCT block size</param>
         public static void InverseDiffBlockThread(byte[] current, int curBlock, int numOfBlock, Vector[] motionVectors, byte[] reference, double[] diffBlock, int width, int height, int N)
         {
             int numOfBlockColumn = width / DCT_BLOCK_SIZE;
@@ -1146,6 +1182,11 @@ namespace ImageCompressionJMPEG
             return new DYCrCb(modY, modCr, modCb, yCrCb.yHeight, yCrCb.yWidth, yCrCb.crCbHeight, yCrCb.crCbWidth);
         }
 
+        /// <summary>
+        /// DCT
+        /// </summary>
+        /// <param name="yCrCb">Y Cr Cb channel</param>
+        /// <returns>Resulting Y Cr Cb channels</returns>
         public static DYCrCb DiscreteCosineTransform(DYCrCb yCrCb)
         {
             int numOfBlockRow = (int)Math.Ceiling((yCrCb.yHeight / 8.0));
@@ -1183,6 +1224,11 @@ namespace ImageCompressionJMPEG
                 yCrCb.yHeight, yCrCb.yWidth, yCrCb.crCbHeight, yCrCb.crCbWidth);
         }
 
+        /// <summary>
+        /// Inverse DCT for mpeg specifically
+        /// </summary>
+        /// <param name="yCrCb">Y Cr Cb channels</param>
+        /// <returns>Double format Y Cr Cb</returns>
         public static DYCrCb InverseDiscreteCosineTransformMPEG(DYCrCb yCrCb)
         {
             int numOfBlockRow = (int)Math.Ceiling((yCrCb.yHeight / 8.0));
@@ -1319,6 +1365,15 @@ namespace ImageCompressionJMPEG
             return result;
         }
 
+        /// <summary>
+        /// Inverse block transform for DCT
+        /// </summary>
+        /// <param name="channel">Input channel</param>
+        /// <param name="numOfBlockRow">number of block row</param>
+        /// <param name="numOfBlockColumn">number of block column</param>
+        /// <param name="width">width of channel</param>
+        /// <param name="height">height of channel</param>
+        /// <returns></returns>
         public static double[] InverseBlockTransform(double[] channel, int numOfBlockRow,
             int numOfBlockColumn, int width, int height)
         {
@@ -1425,6 +1480,15 @@ namespace ImageCompressionJMPEG
             }
         }
 
+        /// <summary>
+        /// Block quantization
+        /// </summary>
+        /// <param name="channel">input channel</param>
+        /// <param name="numOfBlockRow">number of block row</param>
+        /// <param name="numOfBlockColumn">number of block column</param>
+        /// <param name="width">width of channel</param>
+        /// <param name="height">height of channel</param>
+        /// <returns></returns>
         public static byte[] BlockQuantization(double[] channel, int numOfBlockRow,
             int numOfBlockColumn, int width, int height)
         {
@@ -1455,6 +1519,15 @@ namespace ImageCompressionJMPEG
             return result;
         }
 
+        /// <summary>
+        /// Inverse block quantization
+        /// </summary>
+        /// <param name="channel">input channel</param>
+        /// <param name="numOfBlockRow">number of block row</param>
+        /// <param name="numOfBlockColumn">number of block column</param>
+        /// <param name="width">width of channel</param>
+        /// <param name="height">height of channel</param>
+        /// <returns>inverse quantized double array</returns>
         public static double[] InverseBlockQuantization(byte[] channel, int numOfBlockRow,
             int numOfBlockColumn, int width, int height)
         {

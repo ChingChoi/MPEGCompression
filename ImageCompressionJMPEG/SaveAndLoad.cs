@@ -101,6 +101,11 @@ namespace ImageCompressionJMPEG
             return compressedByteArray;
         }
 
+        /// <summary>
+        /// Loads a saved mpeg byte array
+        /// </summary>
+        /// <param name="savedArray">saved mpeg byte array</param>
+        /// <returns>MPEGInfo of the saved mpeg images</returns>
         public static MPEGInfo loadByteArrayMPEG(byte[] savedArray)
         {
             savedArray = RLCompression.ModifiedRunLengthDecompress(savedArray);

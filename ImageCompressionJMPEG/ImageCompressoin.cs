@@ -1013,6 +1013,9 @@ namespace ImageCompressionJMPEG
             sliderValue = customSlider.Value;
         }
 
+        /// <summary>
+        /// Custom tool strip renderer
+        /// </summary>
         private class MyRenderer : ToolStripProfessionalRenderer
         {
             public MyRenderer(Color themeBackgroundColor) : base(new MyColors(themeBackgroundColor)) { }
