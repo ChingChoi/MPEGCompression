@@ -789,6 +789,37 @@ namespace ImageCompressionJMPEG
         /// <returns></returns>
         public static byte[] InverseDiffBlock(Vector[] motionVectors, byte[] reference, double[] diffBlock, int width, int height, int N)
         {
+            int numOfBlock = width / N * height / N;
+            int curBlock = 0;
+            byte[] result = new byte[reference.Length];
+            if (numOfBlock < ThreadSetting.THREAD_THRESHOLD)
+            {
+                InverseDiffBlockThread(result, curBlock, numOfBlock, motionVectors, reference, diffBlock, width, height, N);
+            }
+            else
+            {
+                double segment = numOfBlock / (double)ThreadSetting.threadNum;
+                double job = segment;
+                Thread[] threads = new Thread[ThreadSetting.threadNum];
+                for (int i = 0; i < ThreadSetting.threadNum; i++)
+                {
+                    int z = i;
+                    int threadNumOfBlock = (int)job;
+                    int curThreadBlock = curBlock;
+                    job -= threadNumOfBlock;
+                    job += segment;
+                    threads[z] = new Thread(() => InverseDiffBlockThread(result, curBlock, threadNumOfBlock, motionVectors, reference, diffBlock, width, height, N));
+                    curBlock += threadNumOfBlock;
+                }
+                foreach (Thread t in threads)
+                {
+                    t.Start();
+                }
+                foreach (Thread t in threads)
+                {
+                    t.Join();
+                }
+            }
             int index = 0;
             byte[] current = new byte[reference.Length];
             for (int y = 0; y < height; y += N)
@@ -803,7 +834,7 @@ namespace ImageCompressionJMPEG
                         {
                             if (y + l < height && x + k < width && x + i + k < width && y + j + l < height)
                             {
-                                current[x + k + (y + l) * width] = getBoundedByte((double)reference[x + i + k + (y + j + l) * width] + diffBlock[x + k + (y + l) * width]);
+                                current[x + k + (y + l) * width] = getBoundedByte(reference[x + i + k + (y + j + l) * width] + diffBlock[x + k + (y + l) * width]);
                             }
                         }
                     }
@@ -811,6 +842,39 @@ namespace ImageCompressionJMPEG
                 }
             }
             return current;
+        }
+
+
+        public static void InverseDiffBlockThread(byte[] current, int curBlock, int numOfBlock, Vector[] motionVectors, byte[] reference, double[] diffBlock, int width, int height, int N)
+        {
+            int numOfBlockColumn = width / DCT_BLOCK_SIZE;
+            int currentBlockRow = curBlock / numOfBlockColumn;
+            int currentBlockColumn = curBlock % numOfBlockColumn;
+            int processed = 0;
+            for (int y = currentBlockRow * N; y < height; y += N)
+            {
+                for (int x = currentBlockColumn * N; x < width; x += N)
+                {
+                    if (processed == numOfBlock)
+                    {
+                        return;
+                    }
+                    int i = motionVectors[curBlock].x;
+                    int j = motionVectors[curBlock].y;
+                    for (int l = 0; l < N; l++)
+                    {
+                        for (int k = 0; k < N; k++)
+                        {
+                            if (y + l < height && x + k < width && x + i + k < width && y + j + l < height)
+                            {
+                                current[x + k + (y + l) * width] = getBoundedByte(reference[x + i + k + (y + j + l) * width] + diffBlock[x + k + (y + l) * width]);
+                            }
+                        }
+                    }
+                    curBlock++;
+                    processed++;
+                }
+            }
         }
 
         /// <summary>
@@ -1259,22 +1323,68 @@ namespace ImageCompressionJMPEG
             int numOfBlockColumn, int width, int height)
         {
             int numOfblock = numOfBlockRow * numOfBlockColumn;
+            double[] result = new double[channel.Length];
+            int curBlock = 0;
+            if (numOfblock < ThreadSetting.THREAD_THRESHOLD)
+            {
+                InverseBlockTransformThread(result, channel, numOfblock, curBlock, numOfBlockRow, numOfBlockColumn, width, height);
+            }
+            else
+            {
+                double segment = numOfblock / (double)ThreadSetting.threadNum;
+                double job = segment;
+                Thread[] threads = new Thread[ThreadSetting.threadNum];
+                for (int i = 0; i < ThreadSetting.threadNum; i++)
+                {
+                    int z = i;
+                    int threadNumOfBlock = (int)job;
+                    int curThreadBlock = curBlock;
+                    job -= threadNumOfBlock;
+                    job += segment;
+                    threads[z] = new Thread(() => InverseBlockTransformThread(result, channel, threadNumOfBlock,
+                        curThreadBlock, numOfBlockRow, numOfBlockColumn, width, height));
+                    curBlock += threadNumOfBlock;
+                }
+                foreach (Thread t in threads)
+                {
+                    t.Start();
+                }
+                foreach (Thread t in threads)
+                {
+                    t.Join();
+                }
+            }
+            return result;
+        }
+
+        /// <summary>
+        /// Inverse block transform thread method
+        /// </summary>
+        /// <param name="result">resulting double array</param>
+        /// <param name="channel">input channel</param>
+        /// <param name="numOfBlock">number of block this thread will process</param>
+        /// <param name="curBlock">current block this thread will begin processing</param>
+        /// <param name="numOfBlockRow">number of block row of channel</param>
+        /// <param name="numOfBlockColumn">number of block column of channel</param>
+        /// <param name="width">width of channel</param>
+        /// <param name="height">height of channel</param>
+        public static void InverseBlockTransformThread(double[] result, double[] channel, int numOfBlock, int curBlock, 
+            int numOfBlockRow, int numOfBlockColumn, int width, int height)
+        {
             double cu;
             double cv;
             double tempResult = 0.0;
-            int blockSize = 8;
-            int currentBlockRow = 0;
-            int currentBlockColumn = 0;
-            double[] result = new double[channel.Length];
-            for (int block = 0; block < numOfblock; block++)
+            int currentBlockRow = curBlock / numOfBlockColumn;
+            int currentBlockColumn = curBlock % numOfBlockColumn;
+            for (int block = 0; block < numOfBlock; block++)
             {
-                for (int y = 0; y < blockSize && y + currentBlockRow * blockSize < height; y++)
+                for (int y = 0; y < DCT_BLOCK_SIZE && y + currentBlockRow * DCT_BLOCK_SIZE < height; y++)
                 {
 
-                    for (int x = 0; x < blockSize && x + currentBlockColumn * blockSize < width; x++)
+                    for (int x = 0; x < DCT_BLOCK_SIZE && x + currentBlockColumn * DCT_BLOCK_SIZE < width; x++)
                     {
 
-                        for (int v = 0; v < blockSize && v + currentBlockRow * blockSize < height; v++)
+                        for (int v = 0; v < DCT_BLOCK_SIZE && v + currentBlockRow * DCT_BLOCK_SIZE < height; v++)
                         {
                             if (v == 0)
                             {
@@ -1284,7 +1394,7 @@ namespace ImageCompressionJMPEG
                             {
                                 cv = C_NONZERO;
                             }
-                            for (int u = 0; u < blockSize && u + currentBlockColumn * blockSize < width; u++)
+                            for (int u = 0; u < DCT_BLOCK_SIZE && u + currentBlockColumn * DCT_BLOCK_SIZE < width; u++)
                             {
                                 if (u == 0)
                                 {
@@ -1294,14 +1404,14 @@ namespace ImageCompressionJMPEG
                                 {
                                     cu = C_NONZERO;
                                 }
-                                tempResult += channel[(v + currentBlockRow * blockSize) * width +
-                                    (u + currentBlockColumn * blockSize)] *
-                                    Math.Cos((2.0 * x + 1.0) * u * Math.PI / (2.0 * blockSize)) *
-                                    Math.Cos((2.0 * y + 1.0) * v * Math.PI / (2.0 * blockSize)) *
-                                    (2.0 * cu * cv / Math.Sqrt(blockSize * blockSize));
+                                tempResult += channel[(v + currentBlockRow * DCT_BLOCK_SIZE) * width +
+                                    (u + currentBlockColumn * DCT_BLOCK_SIZE)] *
+                                    Math.Cos((2.0 * x + 1.0) * u * Math.PI / (2.0 * DCT_BLOCK_SIZE)) *
+                                    Math.Cos((2.0 * y + 1.0) * v * Math.PI / (2.0 * DCT_BLOCK_SIZE)) *
+                                    (2.0 * cu * cv / Math.Sqrt(DCT_BLOCK_SIZE * DCT_BLOCK_SIZE));
                             }
                         }
-                        result[(y + currentBlockRow * blockSize) * width + x + currentBlockColumn * blockSize] = tempResult;
+                        result[(y + currentBlockRow * DCT_BLOCK_SIZE) * width + x + currentBlockColumn * DCT_BLOCK_SIZE] = tempResult;
                         tempResult = 0;
                     }
                 }
@@ -1313,7 +1423,6 @@ namespace ImageCompressionJMPEG
                 }
 
             }
-            return result;
         }
 
         public static byte[] BlockQuantization(double[] channel, int numOfBlockRow,
@@ -1366,13 +1475,13 @@ namespace ImageCompressionJMPEG
                     for (int i = 0; i < ThreadSetting.threadNum; i++)
                     {
                         int z = i;
-                        int numOfBlock = (int)job;
+                        int threadNumOfBlock = (int)job;
                         int curThreadBlock = curBlock;
-                        job -= numOfBlock;
+                        job -= threadNumOfBlock;
                         job += segment;
-                        threads[z] = new Thread(() => ZigzagToOriginalThread(resultingChannel, channel, numOfBlock,
+                        threads[z] = new Thread(() => ZigzagToOriginalThread(resultingChannel, channel, threadNumOfBlock,
                             curThreadBlock, numOfBlockRow, numOfBlockColumn, width, height));
-                        curBlock += numOfBlock;
+                        curBlock += threadNumOfBlock;
                     }
                     foreach (Thread t in threads)
                     {
@@ -1390,16 +1499,82 @@ namespace ImageCompressionJMPEG
             int currentBlockRow = 0;
             int currentBlockColumn = 0;
             double[] result = new double[channel.Length];
-            for (int block = 0; block < numOfblock; block++)
+            if (numOfblock < ThreadSetting.THREAD_THRESHOLD)
             {
-
-                for (int y = 0; y < blockSize && y + currentBlockRow * blockSize < height; y++)
+                for (int block = 0; block < numOfblock; block++)
                 {
-                    for (int x = 0; x < blockSize && x + currentBlockColumn * blockSize < width; x++)
+                    for (int y = 0; y < blockSize && y + currentBlockRow * blockSize < height; y++)
                     {
-                        result[(x + currentBlockColumn * blockSize) +
-                               (y + currentBlockRow * blockSize) * width] = (double)((sbyte)channel[(x + currentBlockColumn * blockSize) +
-                               (y + currentBlockRow * blockSize) * width] * currentQuantizationTable[x + blockSize * y]);
+                        for (int x = 0; x < blockSize && x + currentBlockColumn * blockSize < width; x++)
+                        {
+                            result[(x + currentBlockColumn * blockSize) +
+                                   (y + currentBlockRow * blockSize) * width] = ((sbyte)channel[(x + currentBlockColumn * blockSize) +
+                                   (y + currentBlockRow * blockSize) * width] * currentQuantizationTable[x + blockSize * y]);
+
+                        }
+                    }
+                    currentBlockColumn++;
+                    if (currentBlockColumn == numOfBlockColumn)
+                    {
+                        currentBlockColumn = 0;
+                        currentBlockRow++;
+                    }
+                }
+            }
+            else
+            {
+                double segment = numOfblock / (double)ThreadSetting.threadNum;
+                double job = segment;
+                int curBlock = 0;
+                Thread[] threads = new Thread[ThreadSetting.threadNum];
+                for (int i = 0; i < ThreadSetting.threadNum; i++)
+                {
+                    int z = i;
+                    int threadNumOfBlock = (int)job;
+                    int curThreadBlock = curBlock;
+                    job -= threadNumOfBlock;
+                    job += segment;
+                    threads[z] = new Thread(() => InverseBlockQuantizationThread(result, channel, threadNumOfBlock,
+                        curThreadBlock, numOfBlockRow, numOfBlockColumn, width, height));
+                    curBlock += threadNumOfBlock;
+                }
+                foreach (Thread t in threads)
+                {
+                    t.Start();
+                }
+                foreach (Thread t in threads)
+                {
+                    t.Join();
+                }
+            }
+            return result;
+        }
+
+        /// <summary>
+        /// Thread method for inverse block quantization
+        /// </summary>
+        /// <param name="result">resulting double array</param>
+        /// <param name="channel">channel byte array</param>
+        /// <param name="numOfBlock">number of block this thread will process</param>
+        /// <param name="curBlock">current block this thread will start from processing</param>
+        /// <param name="numOfBlockRow">number of block row of channel</param>
+        /// <param name="numOfBlockColumn">number of block column of channel</param>
+        /// <param name="width">width of channel</param>
+        /// <param name="height">height of channel</param>
+        public static void InverseBlockQuantizationThread(double[] result, byte[] channel, int numOfBlock, 
+            int curBlock, int numOfBlockRow, int numOfBlockColumn, int width, int height)
+        {
+            int currentBlockRow = curBlock / numOfBlockColumn;
+            int currentBlockColumn = curBlock % numOfBlockColumn;
+            for (int block = 0; block < numOfBlock; block++)
+            {
+                for (int y = 0; y < DCT_BLOCK_SIZE && y + currentBlockRow * DCT_BLOCK_SIZE < height; y++)
+                {
+                    for (int x = 0; x < DCT_BLOCK_SIZE && x + currentBlockColumn * DCT_BLOCK_SIZE < width; x++)
+                    {
+                        result[(x + currentBlockColumn * DCT_BLOCK_SIZE) +
+                               (y + currentBlockRow * DCT_BLOCK_SIZE) * width] = ((sbyte)channel[(x + currentBlockColumn * DCT_BLOCK_SIZE) +
+                               (y + currentBlockRow * DCT_BLOCK_SIZE) * width] * currentQuantizationTable[x + DCT_BLOCK_SIZE * y]);
 
                     }
                 }
@@ -1410,7 +1585,6 @@ namespace ImageCompressionJMPEG
                     currentBlockRow++;
                 }
             }
-            return result;
         }
 
         /// <summary>
@@ -1650,7 +1824,7 @@ namespace ImageCompressionJMPEG
             }
         }
 
-            /// <summary>
+        /// <summary>
             /// Convert a zigzag ordered array back into orignial array
             /// </summary>
             /// <param name="channel">Zigzagged channel</param>
@@ -1659,7 +1833,7 @@ namespace ImageCompressionJMPEG
             /// <param name="width">width of the image</param>
             /// <param name="height">height of the image</param>
             /// <returns></returns>
-            public static byte[] ZigzagToOriginal(byte[] channel, int numOfBlockRow, int numOfBlockColumn, int width, int height)
+        public static byte[] ZigzagToOriginal(byte[] channel, int numOfBlockRow, int numOfBlockColumn, int width, int height)
         {
             int numOfblock = numOfBlockRow * numOfBlockColumn;
             int blockSize = 8;
