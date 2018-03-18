@@ -4,6 +4,7 @@ using System.Diagnostics;
 using System.Drawing;
 using System.Linq;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace ImageCompressionJMPEG
@@ -1350,7 +1351,39 @@ namespace ImageCompressionJMPEG
         {
             if (zigzag)
             {
-                channel = ZigzagToOriginal(channel, numOfBlockRow, numOfBlockColumn, width, height);
+                int totalBlocks = numOfBlockColumn * numOfBlockRow;
+                if (totalBlocks < ThreadSetting.THREAD_THRESHOLD)
+                {
+                    channel = ZigzagToOriginal(channel, numOfBlockRow, numOfBlockColumn, width, height);
+                }
+                else
+                {
+                    byte[] resultingChannel = new byte[channel.Length];
+                    double segment = totalBlocks / (double)ThreadSetting.threadNum;
+                    double job = segment;
+                    int curBlock = 0;
+                    Thread[] threads = new Thread[ThreadSetting.threadNum];
+                    for (int i = 0; i < ThreadSetting.threadNum; i++)
+                    {
+                        int z = i;
+                        int numOfBlock = (int)job;
+                        int curThreadBlock = curBlock;
+                        job -= numOfBlock;
+                        job += segment;
+                        threads[z] = new Thread(() => ZigzagToOriginalThread(resultingChannel, channel, numOfBlock,
+                            curThreadBlock, numOfBlockRow, numOfBlockColumn, width, height));
+                        curBlock += numOfBlock;
+                    }
+                    foreach (Thread t in threads)
+                    {
+                        t.Start();
+                    }
+                    foreach (Thread t in threads)
+                    {
+                        t.Join();
+                    }
+                    channel = resultingChannel;
+                }
             }
             int numOfblock = numOfBlockRow * numOfBlockColumn;
             int blockSize = 8;
@@ -1381,6 +1414,84 @@ namespace ImageCompressionJMPEG
         }
 
         /// <summary>
+        /// Threaded version of converting byte array to zigzag format
+        /// </summary>
+        /// <param name="result">resulting array</param>
+        /// <param name="channel">input channel</param>
+        /// <param name="numOfBlock">number of block this thread will process</param>
+        /// <param name="curBlock">current block location</param>
+        /// <param name="numOfBlockRow">number of total block rows</param>
+        /// <param name="numOfBlockColumn">number of total block column</param>
+        /// <param name="width">width of the image</param>
+        /// <param name="height">height of the image</param>
+        public static void ByteArrayToZigzagThread(byte[] result, byte[] channel, int numOfBlock, 
+            int curBlock, int numOfBlockRow, int numOfBlockColumn, int width, int height)
+        {
+            int currentBlockRow = curBlock / numOfBlockColumn;
+            int currentBlockColumn = curBlock % numOfBlockColumn;
+            for(; curBlock < numOfBlock; curBlock++)
+            {
+                bool begin = true;
+                int topCap = 0;
+                bool toRight = true;
+                int mappedX = 0;
+                int mappedY = 0;
+                for (int y = 0; y < DCT_BLOCK_SIZE && y + currentBlockRow * DCT_BLOCK_SIZE < height; y++)
+                {
+                    for (int x = 0; x < DCT_BLOCK_SIZE && currentBlockColumn * DCT_BLOCK_SIZE < width; x++)
+                    {
+                        if (begin)
+                        {
+                            begin = false;
+                        }
+                        else if (toRight && mappedY == topCap && topCap < 7 && mappedY + currentBlockColumn * DCT_BLOCK_SIZE + 1 < width)
+                        {
+                            mappedY++;
+                            topCap++;
+                            toRight = !toRight;
+                        }
+                        else if (toRight && mappedY < topCap && mappedY + currentBlockColumn * DCT_BLOCK_SIZE + 1 < width)
+                        {
+                            mappedY++;
+                            mappedX--;
+                        }
+                        else if (!toRight && mappedX == topCap && topCap < 7 && mappedX + currentBlockRow * DCT_BLOCK_SIZE + 1 < height)
+                        {
+                            mappedX++;
+                            topCap++;
+                            toRight = !toRight;
+                        }
+                        else if (!toRight && mappedX < topCap && mappedX + currentBlockRow * DCT_BLOCK_SIZE + 1 < height)
+                        {
+                            mappedX++;
+                            mappedY--;
+                        }
+                        else if (toRight && mappedY == topCap && (topCap == 7 || mappedY + currentBlockColumn * DCT_BLOCK_SIZE + 1 < width))
+                        {
+                            mappedX++;
+                            toRight = !toRight;
+                        }
+                        else if (!toRight && mappedX == topCap && (topCap == 7 || mappedX + currentBlockRow * DCT_BLOCK_SIZE + 1 < height))
+                        {
+                            mappedY++;
+                            toRight = !toRight;
+                        }
+                        result[(y + currentBlockRow * DCT_BLOCK_SIZE) * width +
+                            (x + currentBlockColumn * DCT_BLOCK_SIZE)] = channel[
+                                (mappedX + currentBlockRow * DCT_BLOCK_SIZE) * width +
+                                (mappedY + currentBlockColumn * DCT_BLOCK_SIZE)];
+                    }
+                }
+                currentBlockColumn++;
+                if (currentBlockColumn == numOfBlockColumn)
+                {
+                    currentBlockColumn = 0;
+                    currentBlockRow++;
+                }
+            }
+        }
+
+        /// <summary>
         /// Convert a byte array into a zigzag ordered byte array
         /// </summary>
         /// <param name="channel">Input channel</param>
@@ -1393,7 +1504,6 @@ namespace ImageCompressionJMPEG
             int numOfBlockColumn, int width, int height)
         {
             int numOfblock = numOfBlockRow * numOfBlockColumn;
-            int blockSize = 8;
             int currentBlockRow = 0;
             int currentBlockColumn = 0;
             byte[] result = new byte[channel.Length];
@@ -1404,51 +1514,51 @@ namespace ImageCompressionJMPEG
                 bool toRight = true;
                 int mappedX = 0;
                 int mappedY = 0;
-                for (int y = 0; y < blockSize && y + currentBlockRow * blockSize < height; y++)
+                for (int y = 0; y < DCT_BLOCK_SIZE && y + currentBlockRow * DCT_BLOCK_SIZE < height; y++)
                 {
-                    for (int x = 0; x < blockSize && x + currentBlockColumn * blockSize < width; x++)
+                    for (int x = 0; x < DCT_BLOCK_SIZE && x + currentBlockColumn * DCT_BLOCK_SIZE < width; x++)
                     {
                         if (begin)
                         {
                             begin = false;
                         }
-                        else if (toRight && mappedY == topCap && topCap < 7 && mappedY + currentBlockColumn * blockSize + 1 < width)
+                        else if (toRight && mappedY == topCap && topCap < 7 && mappedY + currentBlockColumn * DCT_BLOCK_SIZE + 1 < width)
                         {
                             mappedY++;
                             topCap++;
                             toRight = !toRight;
                         }
-                        else if (toRight && mappedY < topCap && mappedY + currentBlockColumn * blockSize + 1 < width)
+                        else if (toRight && mappedY < topCap && mappedY + currentBlockColumn * DCT_BLOCK_SIZE + 1 < width)
                         {
                             mappedY++;
                             mappedX--;
                         }
-                        else if (!toRight && mappedX == topCap && topCap < 7 && mappedX + currentBlockRow * blockSize + 1 < height)
+                        else if (!toRight && mappedX == topCap && topCap < 7 && mappedX + currentBlockRow * DCT_BLOCK_SIZE + 1 < height)
                         {
                             mappedX++;
                             topCap++;
                             toRight = !toRight;
                         }
-                        else if (!toRight && mappedX < topCap && mappedX + currentBlockRow * blockSize + 1 < height)
+                        else if (!toRight && mappedX < topCap && mappedX + currentBlockRow * DCT_BLOCK_SIZE + 1 < height)
                         {
                             mappedX++;
                             mappedY--;
                         }
-                        else if (toRight && mappedY == topCap && (topCap == 7 || mappedY + currentBlockColumn * blockSize + 1 < width))
+                        else if (toRight && mappedY == topCap && (topCap == 7 || mappedY + currentBlockColumn * DCT_BLOCK_SIZE + 1 < width))
                         {
                             mappedX++;
                             toRight = !toRight;
                         }
-                        else if (!toRight && mappedX == topCap && (topCap == 7 || mappedX + currentBlockRow * blockSize + 1 < height))
+                        else if (!toRight && mappedX == topCap && (topCap == 7 || mappedX + currentBlockRow * DCT_BLOCK_SIZE + 1 < height))
                         {
                             mappedY++;
                             toRight = !toRight;
                         }
 
-                        result[(y + currentBlockRow * blockSize) * width +
-                            (x + currentBlockColumn * blockSize)] = channel[
-                                (mappedX + currentBlockRow * blockSize) * width +
-                                (mappedY + currentBlockColumn * blockSize)];
+                        result[(y + currentBlockRow * DCT_BLOCK_SIZE) * width +
+                            (x + currentBlockColumn * DCT_BLOCK_SIZE)] = channel[
+                                (mappedX + currentBlockRow * DCT_BLOCK_SIZE) * width +
+                                (mappedY + currentBlockColumn * DCT_BLOCK_SIZE)];
                     }
                 }
                 currentBlockColumn++;
@@ -1462,15 +1572,94 @@ namespace ImageCompressionJMPEG
         }
 
         /// <summary>
-        /// Convert a zigzag ordered array back into orignial array
+        /// Thread version of zigzagged byte array back to original
         /// </summary>
-        /// <param name="channel">Zigzagged channel</param>
-        /// <param name="numOfBlockRow">number of block rows</param>
-        /// <param name="numOfBlockColumn">number of block columns</param>
+        /// <param name="result">resulting array</param>
+        /// <param name="channel">input channel</param>
+        /// <param name="numOfBlock">number of block this thread will process</param>
+        /// <param name="curBlock">current block location</param>
+        /// <param name="numOfBlockRow">number of total block rows</param>
+        /// <param name="numOfBlockColumn">number of total block column</param>
         /// <param name="width">width of the image</param>
         /// <param name="height">height of the image</param>
-        /// <returns></returns>
-        public static byte[] ZigzagToOriginal(byte[] channel, int numOfBlockRow, int numOfBlockColumn, int width, int height)
+        public static void ZigzagToOriginalThread(byte[] result, byte[] channel, int numOfBlock,
+            int curBlock, int numOfBlockRow, int numOfBlockColumn, int width, int height)
+        {
+            int currentBlockRow = curBlock / numOfBlockColumn;
+            int currentBlockColumn = curBlock % numOfBlockColumn;
+            for (int i = 0; i < numOfBlock; i++)
+            {
+                bool begin = true;
+                int topCap = 0;
+                bool toRight = true;
+                int mappedX = 0;
+                int mappedY = 0;
+                for (int y = 0; y < DCT_BLOCK_SIZE && y + currentBlockRow * DCT_BLOCK_SIZE < height; y++)
+                {
+                    for (int x = 0; x < DCT_BLOCK_SIZE && x + currentBlockColumn * DCT_BLOCK_SIZE < width; x++)
+                    {
+                        if (begin)
+                        {
+                            begin = false;
+                        }
+                        else if (toRight && mappedY == topCap && topCap < 7 && mappedY + currentBlockColumn * DCT_BLOCK_SIZE + 1 < width)
+                        {
+                            mappedY++;
+                            topCap++;
+                            toRight = !toRight;
+                        }
+                        else if (toRight && mappedY < topCap && mappedY + currentBlockColumn * DCT_BLOCK_SIZE + 1 < width)
+                        {
+                            mappedY++;
+                            mappedX--;
+                        }
+                        else if (!toRight && mappedX == topCap && topCap < 7 && mappedX + currentBlockRow * DCT_BLOCK_SIZE + 1 < height)
+                        {
+                            mappedX++;
+                            topCap++;
+                            toRight = !toRight;
+                        }
+                        else if (!toRight && mappedX < topCap && mappedX + currentBlockRow * DCT_BLOCK_SIZE + 1 < height)
+                        {
+                            mappedX++;
+                            mappedY--;
+                        }
+                        else if (toRight && mappedY == topCap && (topCap == 7 || mappedY + currentBlockColumn * DCT_BLOCK_SIZE + 1 < width))
+                        {
+                            mappedX++;
+                            toRight = !toRight;
+                        }
+                        else if (!toRight && mappedX == topCap && (topCap == 7 || mappedX + currentBlockRow * DCT_BLOCK_SIZE + 1 < height))
+                        {
+                            mappedY++;
+                            toRight = !toRight;
+                        }
+
+                        result[(mappedX + currentBlockRow * DCT_BLOCK_SIZE) * width +
+                            (mappedY + currentBlockColumn * DCT_BLOCK_SIZE)] = channel[
+                                (y + currentBlockRow * DCT_BLOCK_SIZE) * width +
+                                (x + currentBlockColumn * DCT_BLOCK_SIZE)];
+                    }
+                }
+                currentBlockColumn++;
+                if (currentBlockColumn == numOfBlockColumn)
+                {
+                    currentBlockColumn = 0;
+                    currentBlockRow++;
+                }
+            }
+        }
+
+            /// <summary>
+            /// Convert a zigzag ordered array back into orignial array
+            /// </summary>
+            /// <param name="channel">Zigzagged channel</param>
+            /// <param name="numOfBlockRow">number of block rows</param>
+            /// <param name="numOfBlockColumn">number of block columns</param>
+            /// <param name="width">width of the image</param>
+            /// <param name="height">height of the image</param>
+            /// <returns></returns>
+            public static byte[] ZigzagToOriginal(byte[] channel, int numOfBlockRow, int numOfBlockColumn, int width, int height)
         {
             int numOfblock = numOfBlockRow * numOfBlockColumn;
             int blockSize = 8;

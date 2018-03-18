@@ -1,6 +1,6 @@
 ﻿namespace ImageCompressionJMPEG
 {
-    partial class Form1
+    partial class ImageCompressoin
     {
         /// <summary>
         /// Required designer variable.

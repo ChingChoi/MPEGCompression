@@ -2,9 +2,9 @@ C:\Users\Ching\source\repos\ImageCompressionJMPEG\ImageCompressionJMPEG\bin\Debu
 C:\Users\Ching\source\repos\ImageCompressionJMPEG\ImageCompressionJMPEG\bin\Debug\ImageCompressionJMPEG.exe
 C:\Users\Ching\source\repos\ImageCompressionJMPEG\ImageCompressionJMPEG\bin\Debug\ImageCompressionJMPEG.pdb
 C:\Users\Ching\source\repos\ImageCompressionJMPEG\ImageCompressionJMPEG\obj\Debug\ImageCompressionJMPEG.csprojResolveAssemblyReference.cache
-C:\Users\Ching\source\repos\ImageCompressionJMPEG\ImageCompressionJMPEG\obj\Debug\ImageCompressionJMPEG.Form1.resources
 C:\Users\Ching\source\repos\ImageCompressionJMPEG\ImageCompressionJMPEG\obj\Debug\ImageCompressionJMPEG.Properties.Resources.resources
 C:\Users\Ching\source\repos\ImageCompressionJMPEG\ImageCompressionJMPEG\obj\Debug\ImageCompressionJMPEG.csproj.GenerateResource.Cache
 C:\Users\Ching\source\repos\ImageCompressionJMPEG\ImageCompressionJMPEG\obj\Debug\ImageCompressionJMPEG.csproj.CoreCompileInputs.cache
 C:\Users\Ching\source\repos\ImageCompressionJMPEG\ImageCompressionJMPEG\obj\Debug\ImageCompressionJMPEG.exe
 C:\Users\Ching\source\repos\ImageCompressionJMPEG\ImageCompressionJMPEG\obj\Debug\ImageCompressionJMPEG.pdb
+C:\Users\Ching\source\repos\ImageCompressionJMPEG\ImageCompressionJMPEG\obj\Debug\ImageCompressionJMPEG.ImageCompressoin.resources

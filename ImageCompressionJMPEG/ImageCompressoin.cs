@@ -6,7 +6,17 @@ using System.Windows.Forms;
 
 namespace ImageCompressionJMPEG
 {
-    public partial class Form1 : Form
+    /// <summary>
+    /// Hold info of minimum number of data before calling a thread
+    /// and number of threads to be used
+    /// </summary>
+    public struct ThreadSetting
+    {
+        public static int THREAD_THRESHOLD = 8;
+        public static int threadNum = 4;
+    }
+
+    public partial class ImageCompressoin : Form
     {
         /// <summary>
         /// For overriding movement of window
@@ -74,7 +84,7 @@ namespace ImageCompressionJMPEG
         private int currentFrame = -1;
         private bool playing = false;
 
-        public Form1()
+        public ImageCompressoin()
         {
             this.themeBackgroundColor = Color.FromArgb(175, 0, 0, 0);
             this.themeBackgroundColorTwo = Color.FromArgb(100, 0, 0, 0);
@@ -538,7 +548,7 @@ namespace ImageCompressionJMPEG
             if (currentFrame + 1 < inputFrames.Length)
             {
                 pictureBoxThree.Image = inputFrames[++currentFrame];
-                customSlider.Value = (int)(((float)currentFrame / inputFrames.Length) * 100);
+                customSlider.Value = (int)(((float)currentFrame / (inputFrames.Length - 1)) * 100);
                 customSlider.Refresh();
             }
             else
