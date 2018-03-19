@@ -24,6 +24,9 @@ namespace ImageCompressionJMPEG
         private const int WM_NCHITTEST = 0x84;
         private const int HT_CLIENT = 0x1;
         private const int HT_CAPTION = 0x2;
+        /// <summary>
+        /// Custom GUI offset
+        /// </summary>
         private const int CLOSE_FORM_HORZ_OFFSET = 30;
         private const int PANEL_VERT_OFFSET = 25;
         private const int PICTUREBOX_OFFSET = 25;
@@ -39,6 +42,11 @@ namespace ImageCompressionJMPEG
         private const int VIDEO_PANEL_HEIGHT = 30;
         private const int VIDEO_BUTTON_SIZE = 30;
         private const float VIDEO_FONT_SIZE = 8.25f;
+        private const int COMPRESSION_RATIO_CAPTION_WIDTH = 160;
+        private const int COMPRESSION_RATIO_WIDTH = 40;
+        /// <summary>
+        /// Main GUI variables
+        /// </summary>
         private PictureBox pictureBoxOne;
         private PictureBox pictureBoxTwo;
         private PictureBox pictureBoxThree;
@@ -58,7 +66,8 @@ namespace ImageCompressionJMPEG
         private CustomButton grayscaleView;
         private Bitmap compressedBitmap;
         private Bitmap[] inputFrames;
-        private byte[] compressedByteArray;
+        private byte[] compressedByteArrayJPEG;
+        private byte[] compressedByteArrayMPEG;
         private JPEGInfo jpegInfo;
         private MPEGInfo mpegInfo;
         private Color themeColor;
@@ -67,15 +76,15 @@ namespace ImageCompressionJMPEG
         private TextBox title;
         private Vector[] motionVectors;
         private bool drawMV = false;
-        //
-        // Slider panel
-        //
-        private Panel customSliderPanel;
-        private CustomSlider customSlider;
-        private float sliderValue;
-        //
-        // video panel
-        //
+        /// <summary>
+        /// custom slider panel for play frame
+        /// </summary>
+        private Panel playFrameSliderPanel;
+        private CustomSlider playFrameSlider;
+        private float playFrameSliderValue;
+        /// <summary>
+        /// video control panel
+        /// </summary>
         private Panel videoControlPanel;
         private CustomButton playBegin;
         private CustomButton playEnd;
@@ -83,6 +92,26 @@ namespace ImageCompressionJMPEG
         private System.Windows.Forms.Timer playTimer;
         private int currentFrame = -1;
         private bool playing = false;
+        /// <summary>
+        /// Compressoin ratio panel for jpeg
+        /// </summary>
+        private Panel compressionRatioPanelJPEG;
+        private Label compressionRatioCaptionJPEG;
+        private Label compressionRatioJPEG;
+        private int compressedRatioJPEG;
+        private CustomSlider compressionRatioSliderJPEG;
+        private int compressionRatioValueJPEG = 100;
+        private System.Windows.Forms.Timer compressionRateTimerJPEG;
+        /// <summary>
+        /// Compression ratio panel for mpeg
+        /// </summary>
+        private Panel compressionRatioPanelMPEG;
+        private Label compressionRatioCaptionMPEG;
+        private Label compressionRatioMPEG;
+        private int compressedRatioMPEG;
+        private CustomSlider compressionRatioSliderMPEG;
+        private int compressionRatioValueMPEG = 100;
+        private System.Windows.Forms.Timer compressionRateTimerMPEG;
 
         public ImageCompressoin()
         {
@@ -95,6 +124,9 @@ namespace ImageCompressionJMPEG
             this.FormBorderStyle = System.Windows.Forms.FormBorderStyle.None;
         }
 
+        /// <summary>
+        /// Initializes custom GUI
+        /// </summary>
         private void initializeCustom()
         {
             //
@@ -388,25 +420,25 @@ namespace ImageCompressionJMPEG
             grayscaleView.Click += new System.EventHandler(this.grayscaleView_Click);
             motionVectorInfoPanel.Controls.Add(grayscaleView);
             //
-            // CustomSliderPanel
+            // playFrameSliderPanel
             //
-            customSliderPanel = new Panel();
-            customSliderPanel.BackColor = themeBackgroundColor;
+            playFrameSliderPanel = new Panel();
+            playFrameSliderPanel.BackColor = themeBackgroundColor;
             //
-            // CustomSlider
+            // playFramdeSlider
             //
-            customSlider = new CustomSlider(5, this.Width - PICTUREBOX_OFFSET * 3, PICTUREBOX_OFFSET,
+            playFrameSlider = new CustomSlider(5, this.Width - PICTUREBOX_OFFSET * 3, PICTUREBOX_OFFSET,
                 new SolidBrush(Color.FromArgb(50, 100, 100, 100)), new SolidBrush(themeColor));
-            customSlider.Location = new Point(5, 5);
-            customSlider.Name = "customSlider";
-            customSlider.BackColor = Color.Black;
+            playFrameSlider.Location = new Point(5, 5);
+            playFrameSlider.Name = "play frame slider";
+            playFrameSlider.BackColor = Color.Black;
             Image knobImage = Image.FromFile("..\\..\\img\\circleGrey.png");
             Image knobHoverImage = Image.FromFile("..\\..\\img\\circleLightGreen.png");
-            customSlider.KnobImage = new Bitmap(knobImage);
-            customSlider.KnobHoverImage = new Bitmap(knobHoverImage);
-            customSlider.MouseUp += new MouseEventHandler(this.customSlider_MouseUp);
-            customSlider.MouseMove += new MouseEventHandler(this.customSlider_MouseMove);
-            customSliderPanel.Controls.Add(customSlider);
+            playFrameSlider.KnobImage = new Bitmap(knobImage);
+            playFrameSlider.KnobHoverImage = new Bitmap(knobHoverImage);
+            playFrameSlider.MouseUp += new MouseEventHandler(this.playFrameSlider_MouseUp);
+            playFrameSlider.MouseMove += new MouseEventHandler(this.playFrameSlider_MouseMove);
+            playFrameSliderPanel.Controls.Add(playFrameSlider);
             //
             // videoControlPanel
             //
@@ -435,7 +467,7 @@ namespace ImageCompressionJMPEG
             //
             playEnd = new CustomButton();
             playEnd.Size = new Size(VIDEO_BUTTON_SIZE, VIDEO_BUTTON_SIZE);
-            playEnd.Location = new Point(LABEL_SIZE, 0);
+            playEnd.Location = new Point(VIDEO_BUTTON_SIZE, 0);
             playEnd.BackgroundImageLayout = ImageLayout.Zoom;
             playEnd.FlatAppearance.BorderSize = 0;
             playEnd.FlatStyle = FlatStyle.Flat;
@@ -465,100 +497,95 @@ namespace ImageCompressionJMPEG
             playPause.UseVisualStyleBackColor = true;
             playPause.BackColor = themeBackgroundColor;
             playPause.Click += new EventHandler(this.playPause_Click);
-        }
-
-        /// <summary>
-        /// Override WndProc to allow for resizing
-        /// </summary>
-        /// <param name="m">Message for WndProc</param>
-        protected override void WndProc(ref Message m)
-        {
-            base.WndProc(ref m);
-            if (m.Msg == WM_NCHITTEST)
-            {
-                m.Result = (IntPtr)(HT_CAPTION);
-            }
-        }
-
-        /// <summary>
-        /// Play frames when clicked
-        /// </summary>
-        /// <param name="sender">sender object</param>
-        /// <param name="e">event</param>
-        private void playBegin_Click(object sender, EventArgs e)
-        {
-            playing = true;
-            videoControlPanel.Controls.Add(playPause);
-            videoControlPanel.Controls.Remove(playBegin);
-            if (playTimer == null)
-            {
-                playTimer = new System.Windows.Forms.Timer();
-                playTimer.Tick += new EventHandler(playFrames);
-                playTimer.Interval = 33;
-            }
-            playTimer.Start();
-        }
-
-        /// <summary>
-        /// Pause play frame timer
-        /// </summary>
-        /// <param name="sender"></param>
-        /// <param name="e"></param>
-        private void playPause_Click(object sender, EventArgs e)
-        {
-            if (playing)
-            {
-                videoControlPanel.Controls.Remove(playPause);
-                videoControlPanel.Controls.Add(playBegin);
-                if (playTimer != null)
-                {
-                    playTimer.Stop();
-                }
-                playing = false;
-            }
-        }
-
-        /// <summary>
-        /// End play frame timer
-        /// </summary>
-        /// <param name="sender"></param>
-        /// <param name="e"></param>
-        private void playEnd_Click(object sender, EventArgs e)
-        {
-            if (playTimer != null)
-            {
-                playPause_Click(sender, e);
-                if (inputFrames.Length != 0)
-                {
-                    pictureBoxThree.Image = inputFrames[0];
-                }
-                currentFrame = -1;
-                customSlider.Value = 0;
-                customSlider.Refresh();
-            }
-        }
-
-        /// <summary>
-        /// Replace current frame with next frame if there is one
-        /// </summary>
-        /// <param name="sender">sender object</param>
-        /// <param name="e">event</param>
-        private void playFrames(object sender, EventArgs e)
-        {
-            if (currentFrame + 1 < inputFrames.Length)
-            {
-                pictureBoxThree.Image = inputFrames[++currentFrame];
-                customSlider.Value = (int)(((float)currentFrame / (inputFrames.Length - 1)) * 100);
-                customSlider.Refresh();
-            }
-            else
-            {
-                currentFrame = -1;
-                if (playTimer != null)
-                {
-                    playTimer.Stop();
-                }
-            }
+            //
+            // compressionRatioPanelJPEG
+            //
+            compressionRatioPanelJPEG = new Panel();
+            compressionRatioPanelJPEG.BackColor = themeBackgroundColor;
+            compressionRatioPanelJPEG.Location = new Point(PICTUREBOX_OFFSET + LABEL_SIZE * 4, 0);
+            motionVectorInfoPanel.Controls.Add(compressionRatioPanelJPEG);
+            //
+            // compressionRatioCaptionJPEG
+            //
+            compressionRatioCaptionJPEG = new Label();
+            compressionRatioCaptionJPEG.BorderStyle = System.Windows.Forms.BorderStyle.None;
+            compressionRatioCaptionJPEG.Location = new System.Drawing.Point(0, 0);
+            compressionRatioCaptionJPEG.Size = new System.Drawing.Size(COMPRESSION_RATIO_CAPTION_WIDTH, PICTUREBOX_OFFSET);
+            compressionRatioCaptionJPEG.Font = new System.Drawing.Font("Microsoft Sans Serif",
+                BUTTON_FONT_SIZE, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            compressionRatioCaptionJPEG.TextAlign = ContentAlignment.MiddleCenter;
+            compressionRatioCaptionJPEG.Text = "JPEG Compression Ratio: ";
+            compressionRatioCaptionJPEG.ForeColor = themeColor;
+            compressionRatioCaptionJPEG.BackColor = themeBackgroundColorTwo;
+            compressionRatioPanelJPEG.Controls.Add(compressionRatioCaptionJPEG);
+            //
+            // compressionRatioJPEG
+            //
+            compressionRatioJPEG = new Label();
+            compressionRatioJPEG.BorderStyle = System.Windows.Forms.BorderStyle.None;
+            compressionRatioJPEG.Location = new System.Drawing.Point(COMPRESSION_RATIO_CAPTION_WIDTH, 0);
+            compressionRatioJPEG.Size = new System.Drawing.Size(COMPRESSION_RATIO_WIDTH, PICTUREBOX_OFFSET);
+            compressionRatioJPEG.Font = new System.Drawing.Font("Microsoft Sans Serif",
+                BUTTON_FONT_SIZE, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            compressionRatioJPEG.TextAlign = ContentAlignment.MiddleCenter;
+            compressionRatioJPEG.Text = compressionRatioValueJPEG + "%";
+            compressionRatioJPEG.ForeColor = Color.Cyan;
+            compressionRatioJPEG.BackColor = themeBackgroundColorTwo;
+            compressionRatioPanelJPEG.Controls.Add(compressionRatioJPEG);
+            //
+            // compressionRatioSliderJPEG
+            //
+            compressionRatioSliderJPEG = new CustomSlider(5, this.Width - (PICTUREBOX_OFFSET + LABEL_SIZE * 4) * 2 - COMPRESSION_RATIO_CAPTION_WIDTH - COMPRESSION_RATIO_WIDTH - 15, PICTUREBOX_OFFSET,
+                new SolidBrush(themeColor), new SolidBrush(Color.Cyan));
+            compressionRatioSliderJPEG.Location = new Point(COMPRESSION_RATIO_CAPTION_WIDTH + COMPRESSION_RATIO_WIDTH, 5);
+            compressionRatioSliderJPEG.Name = "compression ratio slider jpeg";
+            compressionRatioSliderJPEG.BackColor = Color.Black;
+            compressionRatioPanelJPEG.Controls.Add(compressionRatioSliderJPEG);
+            compressionRatioSliderJPEG.Value = compressionRatioValueJPEG;
+            //
+            // compressionRatioPanelMPEG
+            //
+            compressionRatioPanelMPEG = new Panel();
+            compressionRatioPanelMPEG.BackColor = themeBackgroundColor;
+            compressionRatioPanelMPEG.Location = new Point(PICTUREBOX_OFFSET + LABEL_SIZE * 4, 0);
+            //
+            // compressionRatioCaptionMPEG
+            //
+            compressionRatioCaptionMPEG = new Label();
+            compressionRatioCaptionMPEG.BorderStyle = System.Windows.Forms.BorderStyle.None;
+            compressionRatioCaptionMPEG.Location = new System.Drawing.Point(0, 0);
+            compressionRatioCaptionMPEG.Size = new System.Drawing.Size(COMPRESSION_RATIO_CAPTION_WIDTH, PICTUREBOX_OFFSET);
+            compressionRatioCaptionMPEG.Font = new System.Drawing.Font("Microsoft Sans Serif",
+                BUTTON_FONT_SIZE, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            compressionRatioCaptionMPEG.TextAlign = ContentAlignment.MiddleCenter;
+            compressionRatioCaptionMPEG.Text = "MPEG Compression Ratio: ";
+            compressionRatioCaptionMPEG.ForeColor = themeColor;
+            compressionRatioCaptionMPEG.BackColor = themeBackgroundColorTwo;
+            compressionRatioPanelMPEG.Controls.Add(compressionRatioCaptionMPEG);
+            //
+            // compressionRatioMPEG
+            //
+            compressionRatioMPEG = new Label();
+            compressionRatioMPEG.BorderStyle = System.Windows.Forms.BorderStyle.None;
+            compressionRatioMPEG.Location = new System.Drawing.Point(COMPRESSION_RATIO_CAPTION_WIDTH, 0);
+            compressionRatioMPEG.Size = new System.Drawing.Size(COMPRESSION_RATIO_WIDTH, PICTUREBOX_OFFSET);
+            compressionRatioMPEG.Font = new System.Drawing.Font("Microsoft Sans Serif",
+                BUTTON_FONT_SIZE, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            compressionRatioMPEG.TextAlign = ContentAlignment.MiddleCenter;
+            compressionRatioMPEG.Text = compressionRatioValueJPEG + "%";
+            compressionRatioMPEG.ForeColor = Color.Cyan;
+            compressionRatioMPEG.BackColor = themeBackgroundColorTwo;
+            compressionRatioPanelMPEG.Controls.Add(compressionRatioMPEG);
+            //
+            // compressionRatioSliderMPEG
+            //
+            compressionRatioSliderMPEG = new CustomSlider(5, this.Width - (PICTUREBOX_OFFSET + LABEL_SIZE * 4) * 2 - COMPRESSION_RATIO_CAPTION_WIDTH - COMPRESSION_RATIO_WIDTH - 15, PICTUREBOX_OFFSET,
+                new SolidBrush(themeColor), new SolidBrush(Color.Cyan));
+            compressionRatioSliderMPEG.Location = new Point(COMPRESSION_RATIO_CAPTION_WIDTH + COMPRESSION_RATIO_WIDTH, 5);
+            compressionRatioSliderMPEG.Name = "compression ratio slider mpeg";
+            compressionRatioSliderMPEG.BackColor = Color.Black;
+            compressionRatioPanelMPEG.Controls.Add(compressionRatioSliderMPEG);
+            compressionRatioSliderMPEG.Value = compressionRatioValueMPEG;
         }
 
         /// <summary>
@@ -589,12 +616,115 @@ namespace ImageCompressionJMPEG
                 grayscaleView.Location = new System.Drawing.Point(motionVectorInfoPanel.Size.Width - LABEL_SIZE * 3 - PICTUREBOX_OFFSET, BUTTON_GAP);
                 jpegView.Location = new Point(motionVectorInfoPanel.Size.Width - LABEL_SIZE * 2 - PICTUREBOX_OFFSET, BUTTON_GAP);
                 mpegView.Location = new System.Drawing.Point(motionVectorInfoPanel.Size.Width - LABEL_SIZE - PICTUREBOX_OFFSET, BUTTON_GAP);
-                customSliderPanel.Size = new Size(w - PICTUREBOX_OFFSET * 2, PICTUREBOX_OFFSET);
-                customSliderPanel.Location = new Point(PICTUREBOX_OFFSET, 27 + PICTUREBOX_OFFSET + pictureBoxThree.Height);
-                customSlider.Size = new Size(w - PICTUREBOX_OFFSET * 2 - 10, 15);
-                customSlider.Width1 = w - PICTUREBOX_OFFSET * 3;
+                playFrameSliderPanel.Size = new Size(w - PICTUREBOX_OFFSET * 2, PICTUREBOX_OFFSET);
+                playFrameSliderPanel.Location = new Point(PICTUREBOX_OFFSET, 27 + PICTUREBOX_OFFSET + pictureBoxThree.Height);
+                playFrameSlider.Size = new Size(w - PICTUREBOX_OFFSET * 2 - 10, 15);
+                playFrameSlider.Width1 = w - PICTUREBOX_OFFSET * 3;
                 videoControlPanel.Size = new Size(w - PICTUREBOX_OFFSET * 2, VIDEO_PANEL_HEIGHT);
                 videoControlPanel.Location = new Point(PICTUREBOX_OFFSET, 27 + PICTUREBOX_OFFSET * 2 + pictureBoxThree.Height);
+                compressionRatioPanelJPEG.Size = new Size(w - (PICTUREBOX_OFFSET + LABEL_SIZE * 4) * 2, PICTUREBOX_OFFSET);
+                compressionRatioSliderJPEG.Size = new Size(compressionRatioPanelJPEG.Size.Width - COMPRESSION_RATIO_CAPTION_WIDTH - COMPRESSION_RATIO_WIDTH, PICTUREBOX_OFFSET);
+                compressionRatioSliderJPEG.Width1 = compressionRatioSliderJPEG.Size.Width - 20;
+                compressionRatioPanelMPEG.Size = new Size(w - (PICTUREBOX_OFFSET + LABEL_SIZE * 4) * 2, PICTUREBOX_OFFSET);
+                compressionRatioSliderMPEG.Size = new Size(compressionRatioPanelMPEG.Size.Width - COMPRESSION_RATIO_CAPTION_WIDTH - COMPRESSION_RATIO_WIDTH, PICTUREBOX_OFFSET);
+                compressionRatioSliderMPEG.Width1 = compressionRatioSliderMPEG.Size.Width - 20;
+            }
+        }
+
+        /// <summary>
+        /// Override WndProc to allow for resizing
+        /// </summary>
+        /// <param name="m">Message for WndProc</param>
+        protected override void WndProc(ref Message m)
+        {
+            base.WndProc(ref m);
+            if (m.Msg == WM_NCHITTEST)
+            {
+                m.Result = (IntPtr)(HT_CAPTION);
+            }
+        }
+
+        /// <summary>
+        /// Play frames when clicked
+        /// </summary>
+        /// <param name="sender">sender object</param>
+        /// <param name="e">event</param>
+        private void playBegin_Click(object sender, EventArgs e)
+        {
+            if (inputFrames != null)
+            {
+                playing = true;
+                videoControlPanel.Controls.Add(playPause);
+                videoControlPanel.Controls.Remove(playBegin);
+                if (playTimer == null)
+                {
+                    playTimer = new System.Windows.Forms.Timer();
+                    playTimer.Tick += new EventHandler(playFrames);
+                    playTimer.Interval = 33;
+                }
+                playTimer.Start();
+            }
+        }
+
+        /// <summary>
+        /// Pause play frame timer
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
+        private void playPause_Click(object sender, EventArgs e)
+        {
+            if (playing)
+            {
+                videoControlPanel.Controls.Remove(playPause);
+                videoControlPanel.Controls.Add(playBegin);
+                if (playTimer != null)
+                {
+                    playTimer.Stop();
+                }
+                playing = false;
+            }
+        }
+
+        /// <summary>
+        /// End play frame timer
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
+        private void playEnd_Click(object sender, EventArgs e)
+        {
+            if (playTimer != null && inputFrames != null)
+            {
+                playPause_Click(sender, e);
+                if (inputFrames.Length != 0)
+                {
+                    pictureBoxThree.Image = inputFrames[0];
+                }
+                currentFrame = -1;
+                playFrameSlider.Value = 0;
+                playFrameSlider.Refresh();
+            }
+        }
+
+        /// <summary>
+        /// Replace current frame with next frame if there is one
+        /// </summary>
+        /// <param name="sender">sender object</param>
+        /// <param name="e">event</param>
+        private void playFrames(object sender, EventArgs e)
+        {
+            if (currentFrame + 1 < inputFrames.Length)
+            {
+                pictureBoxThree.Image = inputFrames[++currentFrame];
+                playFrameSlider.Value = (int)(((float)currentFrame / (inputFrames.Length - 1)) * 100);
+                playFrameSlider.Refresh();
+            }
+            else
+            {
+                currentFrame = -1;
+                if (playTimer != null)
+                {
+                    playTimer.Stop();
+                }
             }
         }
 
@@ -634,7 +764,7 @@ namespace ImageCompressionJMPEG
                         inputFrames = Compression.MPEGDecompression(SaveAndLoad.loadByteArrayMPEG(File.ReadAllBytes(dialog.FileNames[0])));
                         pictureBoxThree.Image = inputFrames[0];
                     }
-                    else if (Compression.jView)
+                    else if (Compression.jView && !Path.GetExtension(dialog.FileNames[0]).Equals(".CMPEG"))
                     {
                         if (addToOne)
                         {
@@ -671,6 +801,7 @@ namespace ImageCompressionJMPEG
         private void addImageOne(object sender, EventArgs e)
         {
             addToOne = true;
+            resetRatioJPEG();
             openImage();
         }
 
@@ -682,6 +813,7 @@ namespace ImageCompressionJMPEG
         private void removeImageOne(object sender, EventArgs e)
         {
             pictureBoxOne.Image = null;
+            resetRatioJPEG();
             Refresh();
         }
 
@@ -693,6 +825,7 @@ namespace ImageCompressionJMPEG
         private void addImageTwo(object sender, EventArgs e)
         {
             addToOne = false;
+            resetRatioJPEG();
             openImage();
         }
 
@@ -704,17 +837,20 @@ namespace ImageCompressionJMPEG
         private void removeImageTwo(object sender, EventArgs e)
         {
             pictureBoxTwo.Image = null;
+            resetRatioJPEG();
             Refresh();
         }
 
         private void addImageThree(object sender, EventArgs e)
         {
             openImage();
+            resetRatioMPEG();
         }
 
         private void removeImageThree(object sender, EventArgs e)
         {
             pictureBoxThree.Image = null;
+            resetRatioMPEG();
         }
 
         /// <summary>
@@ -732,6 +868,8 @@ namespace ImageCompressionJMPEG
             pictureBoxTwo.Image = new Bitmap(compressedBitmap);
             Compression.Grayscale(bitmap, out grayscaleBitmap, out grayscaleBitmapTwo);
             updateGrayscale(grayscaleBitmap, grayscaleBitmapTwo);
+            compressedByteArrayJPEG = SaveAndLoad.saveIntoByteArray(jpegInfo);
+            updateCompressionRatioJPEG(bitmap, compressedByteArrayJPEG);
         }
 
         private void saveToolStripMenuItem_Click(object sender, EventArgs e)
@@ -748,8 +886,8 @@ namespace ImageCompressionJMPEG
                         BinaryWriter wr = new BinaryWriter(f);
                         if (jpegInfo.originalHeight != 0)
                         {
-                            compressedByteArray = SaveAndLoad.saveIntoByteArray(jpegInfo);
-                            wr.Write(compressedByteArray);
+                            compressedByteArrayJPEG = SaveAndLoad.saveIntoByteArray(jpegInfo);
+                            wr.Write(compressedByteArrayJPEG);
                         }
                         wr.Close();
                         f.Close();
@@ -759,8 +897,8 @@ namespace ImageCompressionJMPEG
                         BinaryWriter wr = new BinaryWriter(f);
                         if (mpegInfo.originalHeight != 0)
                         {
-                            compressedByteArray = SaveAndLoad.saveIntoByteArray(mpegInfo);
-                            wr.Write(compressedByteArray);
+                            compressedByteArrayJPEG = SaveAndLoad.saveIntoByteArray(mpegInfo);
+                            wr.Write(compressedByteArrayJPEG);
                         }
                         wr.Close();
                         f.Close();
@@ -888,8 +1026,103 @@ namespace ImageCompressionJMPEG
                 mpegInfo = Compression.MPEGCompression(inputFrames);
                 inputFrames = Compression.MPEGDecompression(mpegInfo);
                 pictureBoxThree.Image = new Bitmap(inputFrames[0]);
+                compressedByteArrayMPEG = SaveAndLoad.saveIntoByteArray(mpegInfo);
+                updateCompresionRatioMPEG(inputFrames, compressedByteArrayMPEG);
             }
         }
+
+        /// <summary>
+        /// Updates the compression ratio value
+        /// </summary>
+        /// <param name="bitmap"></param>
+        /// <param name="compressedByteArray"></param>
+        private void updateCompressionRatioJPEG(Bitmap bitmap, byte[] compressedByteArray)
+        {
+            int originalSize = bitmap.Width * bitmap.Height * 3;
+            int compressedSize = compressedByteArray.Length;
+            compressedRatioJPEG = (int)((compressedSize / (double)originalSize) * 100);
+            compressionRateTimerJPEG = new System.Windows.Forms.Timer();
+            compressionRateTimerJPEG.Tick += new EventHandler(updateRatioJPEG);
+            compressionRateTimerJPEG.Interval = 1;
+            compressionRateTimerJPEG.Start();
+        }
+
+        /// <summary>
+        /// Update ratio value event jpeg
+        /// </summary>
+        /// <param name="sender">sender object</param>
+        /// <param name="e">event</param>
+        private void updateRatioJPEG(object sender, EventArgs e)
+        {
+            if (compressedRatioJPEG < compressionRatioValueJPEG)
+            {
+                compressionRatioValueJPEG--;
+                compressionRatioSliderJPEG.Value = compressionRatioValueJPEG;
+                compressionRatioJPEG.Text = compressionRatioValueJPEG + "%";
+                compressionRateTimerJPEG.Interval++;
+            }
+            else
+            {
+                compressionRateTimerJPEG.Stop();
+            }
+        }
+
+        /// <summary>
+        /// resets the compression ratio for JPEG
+        /// </summary>
+        private void resetRatioJPEG()
+        {
+            compressionRatioValueJPEG = 100;
+            compressionRatioSliderJPEG.Value = compressionRatioValueJPEG;
+            compressionRatioJPEG.Text = compressionRatioValueJPEG + "%";
+        }
+
+        /// <summary>
+        /// update the compression ratio value for mpeg
+        /// </summary>
+        /// <param name="inputFrames">input frames</param>
+        /// <param name="compressedByteArray">compressed frames</param>
+        private void updateCompresionRatioMPEG(Bitmap[] inputFrames, byte[] compressedByteArray)
+        {
+            int originalSize = inputFrames[0].Width * inputFrames[0].Height * 3 * inputFrames.Length;
+            int compressedSize = compressedByteArray.Length;
+            compressedRatioMPEG = (int)((compressedSize / (double)originalSize) * 100);
+            compressionRateTimerMPEG = new System.Windows.Forms.Timer();
+            compressionRateTimerMPEG.Tick += new EventHandler(updateRatioMPEG);
+            compressionRateTimerMPEG.Interval = 1;
+            compressionRateTimerMPEG.Start();
+        }
+
+        /// <summary>
+        /// update ratio value event mpeg
+        /// </summary>
+        /// <param name="sender">sender object</param>
+        /// <param name="e">event</param>
+        private void updateRatioMPEG(object sender, EventArgs e)
+        {
+            if (compressedRatioMPEG < compressionRatioValueMPEG)
+            {
+                compressionRatioValueMPEG--;
+                compressionRatioSliderMPEG.Value = compressionRatioValueMPEG;
+                compressionRatioMPEG.Text = compressionRatioValueMPEG + "%";
+                compressionRateTimerMPEG.Interval++;
+            }
+            else
+            {
+                compressionRateTimerMPEG.Stop();
+            }
+        }
+
+        /// <summary>
+        /// Reset the compression ratio for mpeg
+        /// </summary>
+        private void resetRatioMPEG()
+        {
+            compressionRatioValueMPEG = 100;
+            compressionRatioSliderMPEG.Value = compressionRatioValueMPEG;
+            compressionRatioMPEG.Text = compressionRatioValueMPEG + "%";
+        }
+
 
         /// <summary>
         /// Add search range by one limited by upper search range
@@ -939,6 +1172,8 @@ namespace ImageCompressionJMPEG
             panel.Controls.Remove(pictureBoxThree);
             panel.Controls.Remove(pictureBoxGrayscaleLeft);
             panel.Controls.Remove(pictureBoxGrayscaleRight);
+            motionVectorInfoPanel.Controls.Add(compressionRatioPanelJPEG);
+            motionVectorInfoPanel.Controls.Remove(compressionRatioPanelMPEG);
             removeVideoPanel();
             Compression.mView = false;
             Compression.jView = true;
@@ -958,6 +1193,8 @@ namespace ImageCompressionJMPEG
             panel.Controls.Remove(pictureBoxGrayscaleLeft);
             panel.Controls.Remove(pictureBoxGrayscaleRight);
             addVideoPanel();
+            motionVectorInfoPanel.Controls.Add(compressionRatioPanelMPEG);
+            motionVectorInfoPanel.Controls.Remove(compressionRatioPanelJPEG);
             Compression.mView = true;
             Compression.jView = false;
             Compression.gView = false;
@@ -976,6 +1213,8 @@ namespace ImageCompressionJMPEG
             panel.Controls.Add(pictureBoxGrayscaleLeft);
             panel.Controls.Add(pictureBoxGrayscaleRight);
             removeVideoPanel();
+            motionVectorInfoPanel.Controls.Add(compressionRatioPanelJPEG);
+            motionVectorInfoPanel.Controls.Remove(compressionRatioPanelMPEG);
             Compression.mView = false;
             Compression.jView = false;
             Compression.gView = true;
@@ -983,13 +1222,13 @@ namespace ImageCompressionJMPEG
 
         private void addVideoPanel()
         {
-            panel.Controls.Add(customSliderPanel);
+            panel.Controls.Add(playFrameSliderPanel);
             panel.Controls.Add(videoControlPanel);
         }
 
         private void removeVideoPanel()
         {
-            panel.Controls.Remove(customSliderPanel);
+            panel.Controls.Remove(playFrameSliderPanel);
             panel.Controls.Remove(videoControlPanel);
         }
 
@@ -998,9 +1237,9 @@ namespace ImageCompressionJMPEG
         /// </summary>
         /// <param name="sender">sender object</param>
         /// <param name="e">event</param>
-        private void customSlider_MouseUp(object sender, EventArgs e)
+        private void playFrameSlider_MouseUp(object sender, EventArgs e)
         {
-            sliderValue = customSlider.Value;
+            playFrameSliderValue = playFrameSlider.Value;
         }
 
         /// <summary>
@@ -1008,9 +1247,9 @@ namespace ImageCompressionJMPEG
         /// </summary>
         /// <param name="sender">sender object</param>
         /// <param name="e">event</param>
-        private void customSlider_MouseMove(object sender, EventArgs e)
+        private void playFrameSlider_MouseMove(object sender, EventArgs e)
         {
-            sliderValue = customSlider.Value;
+            playFrameSliderValue = playFrameSlider.Value;
         }
 
         /// <summary>

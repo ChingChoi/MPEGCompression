@@ -1,4 +1,16 @@
 ===============================================================
+Compression ratio panel
+===============================================================
+
+Compression Ratio: __ [xxx======================]
+
+compressionRatioPanel
+compressionRatioCaption
+compressionRatio
+compressionRatioSlider
+compressionRatioValue
+
+===============================================================
 MPEG multi frame flow
 ===============================================================
 
