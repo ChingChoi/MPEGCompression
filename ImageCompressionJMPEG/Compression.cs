@@ -729,43 +729,6 @@ namespace ImageCompressionJMPEG
             return mpegFrames;
         }
 
-        //public static Bitmap MPEGDecompression(byte[] inputArray)
-        //{
-        //    currentQuantizationTable = quantizationTableJPEG;
-        //    inputArray = RLCompression.ModifiedRunLengthDecompress(inputArray);
-        //    byte[] widthByteArray = new byte[intToByteSize];
-        //    byte[] heightByteArray = new byte[intToByteSize];
-        //    int offset = 0;
-        //    System.Buffer.BlockCopy(inputArray, 0, widthByteArray, 0, intToByteSize);
-        //    offset += intToByteSize;
-        //    System.Buffer.BlockCopy(inputArray, offset, heightByteArray, 0, intToByteSize);
-        //    offset += intToByteSize;
-
-        //    int width = BitConverter.ToInt32(widthByteArray, 0);
-        //    int height = BitConverter.ToInt32(widthByteArray, 0);
-        //    int reducedWidth = (int)(((double)width / 2.0));
-        //    int reducedHeight = (int)(((double)height / 2.0));
-
-        //    byte[] qY = new byte[width * height];
-        //    byte[] qCr = new byte[reducedWidth * reducedHeight];
-        //    byte[] qCb = new byte[reducedWidth * reducedHeight];
-
-        //    System.Buffer.BlockCopy(inputArray, offset, qY, 0, qY.Length);
-        //    offset += qY.Length;
-        //    System.Buffer.BlockCopy(inputArray, offset, qCr, 0, qCr.Length);
-        //    offset += qCr.Length;
-        //    System.Buffer.BlockCopy(inputArray, offset, qCb, 0, qCb.Length);
-        //    offset += qCb.Length;
-
-        //    YCrCb qYCrCb = new YCrCb(qY, qCr, qCb, height, width, reducedHeight, reducedWidth);
-        //    DYCrCb iQYCrCb = InverseQuantizationAndZigzag(qYCrCb);
-        //    YCrCb iYCrCb = InverseDiscreteCosineTransform(iQYCrCb);
-        //    YCrCb fillediYCrCb = fillSubSample(iYCrCb);
-        //    Bitmap result = convertToBitmap(fillediYCrCb);
-        //    return result;
-        //}
-
-
         /// <summary>
         /// Returns difference block of two frame using given motion vectors
         /// </summary>
@@ -813,37 +776,37 @@ namespace ImageCompressionJMPEG
         /// <returns></returns>
         public static byte[] InverseDiffBlock(Vector[] motionVectors, byte[] reference, double[] diffBlock, int width, int height, int N)
         {
-            int numOfBlock = width / N * height / N;
-            int curBlock = 0;
-            byte[] result = new byte[reference.Length];
-            if (numOfBlock < ThreadSetting.THREAD_THRESHOLD)
-            {
-                InverseDiffBlockThread(result, curBlock, numOfBlock, motionVectors, reference, diffBlock, width, height, N);
-            }
-            else
-            {
-                double segment = numOfBlock / (double)ThreadSetting.threadNum;
-                double job = segment;
-                Thread[] threads = new Thread[ThreadSetting.threadNum];
-                for (int i = 0; i < ThreadSetting.threadNum; i++)
-                {
-                    int z = i;
-                    int threadNumOfBlock = (int)job;
-                    int curThreadBlock = curBlock;
-                    job -= threadNumOfBlock;
-                    job += segment;
-                    threads[z] = new Thread(() => InverseDiffBlockThread(result, curBlock, threadNumOfBlock, motionVectors, reference, diffBlock, width, height, N));
-                    curBlock += threadNumOfBlock;
-                }
-                foreach (Thread t in threads)
-                {
-                    t.Start();
-                }
-                foreach (Thread t in threads)
-                {
-                    t.Join();
-                }
-            }
+            //int numOfBlock = width / N * height / N;
+            //int curBlock = 0;
+            //byte[] result = new byte[reference.Length];
+            //if (numOfBlock < ThreadSetting.THREAD_THRESHOLD)
+            //{
+            //    InverseDiffBlockThread(result, curBlock, numOfBlock, motionVectors, reference, diffBlock, width, height, N);
+            //}
+            //else
+            //{
+            //    double segment = numOfBlock / (double)ThreadSetting.threadNum;
+            //    double job = segment;
+            //    Thread[] threads = new Thread[ThreadSetting.threadNum];
+            //    for (int i = 0; i < ThreadSetting.threadNum; i++)
+            //    {
+            //        int z = i;
+            //        int threadNumOfBlock = (int)job;
+            //        int curThreadBlock = curBlock;
+            //        job -= threadNumOfBlock;
+            //        job += segment;
+            //        threads[z] = new Thread(() => InverseDiffBlockThread(result, curThreadBlock, threadNumOfBlock, motionVectors, reference, diffBlock, width, height, N));
+            //        curBlock += threadNumOfBlock;
+            //    }
+            //    foreach (Thread t in threads)
+            //    {
+            //        t.Start();
+            //    }
+            //    foreach (Thread t in threads)
+            //    {
+            //        t.Join();
+            //    }
+            //}
             int index = 0;
             byte[] current = new byte[reference.Length];
             for (int y = 0; y < height; y += N)
@@ -883,7 +846,7 @@ namespace ImageCompressionJMPEG
         /// <param name="N">DCT block size</param>
         public static void InverseDiffBlockThread(byte[] current, int curBlock, int numOfBlock, Vector[] motionVectors, byte[] reference, double[] diffBlock, int width, int height, int N)
         {
-            int numOfBlockColumn = width / DCT_BLOCK_SIZE;
+            int numOfBlockColumn = width / N;
             int currentBlockRow = curBlock / numOfBlockColumn;
             int currentBlockColumn = curBlock % numOfBlockColumn;
             int processed = 0;
