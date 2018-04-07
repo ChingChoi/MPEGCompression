@@ -1387,6 +1387,7 @@ namespace ImageCompressionJMPEG
             mPEGToolStripMenuItem.ForeColor = themeColor;
             videoToolStripMenuItem.ForeColor = themeColor;
             mVToolStripMenuItem.ForeColor = themeColor;
+            waveletToolStripMenuItem.ForeColor = themeColor;
         }
 
         private void waveletToolStripMenuItem_Click(object sender, EventArgs e)
