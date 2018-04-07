@@ -64,3 +64,36 @@ i = (b - w - h + 10pyCrCb + 10pMVs) / (iYCrCb + 10pYCrCb + pMVs)
 p = (i - 1) * 10
 
 does not work since pframes are not always a multiple of 10
+
+
+            int numOfBlock = width / N * height / N;
+            int curBlock = 0;
+            byte[] result = new byte[reference.Length];
+            if (numOfBlock < ThreadSetting.THREAD_THRESHOLD)
+            {
+                InverseDiffBlockThread(result, curBlock, numOfBlock, motionVectors, reference, diffBlock, width, height, N);
+            }
+            else
+            {
+                double segment = numOfBlock / (double)ThreadSetting.threadNum;
+                double job = segment;
+                Thread[] threads = new Thread[ThreadSetting.threadNum];
+                for (int i = 0; i < ThreadSetting.threadNum; i++)
+                {
+                    int z = i;
+                    int threadNumOfBlock = (int)job;
+                    int curThreadBlock = curBlock;
+                    job -= threadNumOfBlock;
+                    job += segment;
+                    threads[z] = new Thread(() => InverseDiffBlockThread(result, curBlock, threadNumOfBlock, motionVectors, reference, diffBlock, width, height, N));
+                    curBlock += threadNumOfBlock;
+                }
+                foreach (Thread t in threads)
+                {
+                    t.Start();
+                }
+                foreach (Thread t in threads)
+                {
+                    t.Join();
+                }
+            }

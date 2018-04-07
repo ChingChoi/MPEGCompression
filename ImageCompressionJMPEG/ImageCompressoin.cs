@@ -1389,5 +1389,10 @@ namespace ImageCompressionJMPEG
             mVToolStripMenuItem.ForeColor = themeColor;
         }
 
+        private void waveletToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            Bitmap result = Wavelet.CompressWithWavelet(new Bitmap(pictureBoxOne.Image));
+            pictureBoxTwo.Image = result;
+        }
     }
 }

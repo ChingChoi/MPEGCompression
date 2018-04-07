@@ -39,6 +39,7 @@
             this.mVToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.openFileDialog = new System.Windows.Forms.OpenFileDialog();
             this.saveFileDialog = new System.Windows.Forms.SaveFileDialog();
+            this.waveletToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.menuStrip1.SuspendLayout();
             this.SuspendLayout();
             // 
@@ -85,7 +86,8 @@
             // 
             this.editToolStripMenuItem.DropDownItems.AddRange(new System.Windows.Forms.ToolStripItem[] {
             this.jPEGToolStripMenuItem,
-            this.videoToolStripMenuItem});
+            this.videoToolStripMenuItem,
+            this.waveletToolStripMenuItem});
             this.editToolStripMenuItem.Name = "editToolStripMenuItem";
             this.editToolStripMenuItem.Size = new System.Drawing.Size(39, 20);
             this.editToolStripMenuItem.Text = "Edit";
@@ -95,7 +97,7 @@
             this.jPEGToolStripMenuItem.Name = "jPEGToolStripMenuItem";
             this.jPEGToolStripMenuItem.ShortcutKeys = ((System.Windows.Forms.Keys)(((System.Windows.Forms.Keys.Control | System.Windows.Forms.Keys.Shift) 
             | System.Windows.Forms.Keys.J)));
-            this.jPEGToolStripMenuItem.Size = new System.Drawing.Size(169, 22);
+            this.jPEGToolStripMenuItem.Size = new System.Drawing.Size(193, 22);
             this.jPEGToolStripMenuItem.Text = "JPEG";
             this.jPEGToolStripMenuItem.Click += new System.EventHandler(this.jPEGToolStripMenuItem_Click);
             // 
@@ -105,7 +107,7 @@
             this.mPEGToolStripMenuItem,
             this.mVToolStripMenuItem});
             this.videoToolStripMenuItem.Name = "videoToolStripMenuItem";
-            this.videoToolStripMenuItem.Size = new System.Drawing.Size(169, 22);
+            this.videoToolStripMenuItem.Size = new System.Drawing.Size(193, 22);
             this.videoToolStripMenuItem.Text = "Video";
             // 
             // mPEGToolStripMenuItem
@@ -130,14 +132,23 @@
             // 
             this.openFileDialog.FileName = "openFileDialog1";
             // 
-            // Form1
+            // waveletToolStripMenuItem
+            // 
+            this.waveletToolStripMenuItem.Name = "waveletToolStripMenuItem";
+            this.waveletToolStripMenuItem.ShortcutKeys = ((System.Windows.Forms.Keys)(((System.Windows.Forms.Keys.Control | System.Windows.Forms.Keys.Shift) 
+            | System.Windows.Forms.Keys.W)));
+            this.waveletToolStripMenuItem.Size = new System.Drawing.Size(193, 22);
+            this.waveletToolStripMenuItem.Text = "Wavelet";
+            this.waveletToolStripMenuItem.Click += new System.EventHandler(this.waveletToolStripMenuItem_Click);
+            // 
+            // ImageCompressoin
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.ClientSize = new System.Drawing.Size(284, 261);
             this.Controls.Add(this.menuStrip1);
             this.MainMenuStrip = this.menuStrip1;
-            this.Name = "Form1";
+            this.Name = "ImageCompressoin";
             this.Text = "Form1";
             this.menuStrip1.ResumeLayout(false);
             this.menuStrip1.PerformLayout();
@@ -159,6 +170,7 @@
         private System.Windows.Forms.ToolStripMenuItem videoToolStripMenuItem;
         private System.Windows.Forms.ToolStripMenuItem mPEGToolStripMenuItem;
         private System.Windows.Forms.ToolStripMenuItem mVToolStripMenuItem;
+        private System.Windows.Forms.ToolStripMenuItem waveletToolStripMenuItem;
     }
 }
 

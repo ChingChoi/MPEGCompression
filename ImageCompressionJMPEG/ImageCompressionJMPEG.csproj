@@ -64,6 +64,7 @@
     <Compile Include="Slider.cs">
       <SubType>Component</SubType>
     </Compile>
+    <Compile Include="Wavelet.cs" />
     <EmbeddedResource Include="ImageCompressoin.resx">
       <DependentUpon>ImageCompressoin.cs</DependentUpon>
     </EmbeddedResource>

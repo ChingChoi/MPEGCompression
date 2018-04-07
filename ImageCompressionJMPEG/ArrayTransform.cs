@@ -251,5 +251,32 @@ namespace ImageCompressionJMPEG
             }
             return vectors;
         }
+
+        public static int[,] convertToComArray(int[][] input)
+        {
+            int[,] result = new int[input.Length, input[0].Length];
+            for (int i = 0; i < input.Length; i++)
+            {
+                for (int j = 0; j < input[0].Length; j++)
+                {
+                    result[i,j] = input[i][j];
+                }
+            }
+            return result;
+        }
+
+        public static int[][] convertFromComArray(int[,] input)
+        {
+            int[][] result = new int[input.GetLength(0)][];
+            for (int i = 0; i < input.GetLength(0); i++)
+            {
+                result[i] = new int[input.GetLength(1)];
+                for (int j = 0; j < input.GetLength(1); j++)
+                {
+                    result[i][j] = input[i, j];
+                }
+            }
+            return result;
+        }
     }
 }

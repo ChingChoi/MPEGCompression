@@ -8,3 +8,13 @@ C:\Users\Ching\source\repos\ImageCompressionJMPEG\ImageCompressionJMPEG\obj\Debu
 C:\Users\Ching\source\repos\ImageCompressionJMPEG\ImageCompressionJMPEG\obj\Debug\ImageCompressionJMPEG.exe
 C:\Users\Ching\source\repos\ImageCompressionJMPEG\ImageCompressionJMPEG\obj\Debug\ImageCompressionJMPEG.pdb
 C:\Users\Ching\source\repos\ImageCompressionJMPEG\ImageCompressionJMPEG\obj\Debug\ImageCompressionJMPEG.ImageCompressoin.resources
+D:\BCIT\Term 4\repos\ImageCompressionJMPEG\ImageCompressionJMPEG\obj\Debug\ImageCompressionJMPEG.csprojResolveAssemblyReference.cache
+D:\BCIT\Term 4\repos\ImageCompressionJMPEG\ImageCompressionJMPEG\obj\Debug\ImageCompressionJMPEG.ImageCompressoin.resources
+D:\BCIT\Term 4\repos\ImageCompressionJMPEG\ImageCompressionJMPEG\obj\Debug\ImageCompressionJMPEG.Properties.Resources.resources
+D:\BCIT\Term 4\repos\ImageCompressionJMPEG\ImageCompressionJMPEG\obj\Debug\ImageCompressionJMPEG.csproj.GenerateResource.Cache
+D:\BCIT\Term 4\repos\ImageCompressionJMPEG\ImageCompressionJMPEG\obj\Debug\ImageCompressionJMPEG.csproj.CoreCompileInputs.cache
+D:\BCIT\Term 4\repos\ImageCompressionJMPEG\ImageCompressionJMPEG\obj\Debug\ImageCompressionJMPEG.exe
+D:\BCIT\Term 4\repos\ImageCompressionJMPEG\ImageCompressionJMPEG\obj\Debug\ImageCompressionJMPEG.pdb
+D:\BCIT\Term 4\repos\ImageCompressionJMPEG\ImageCompressionJMPEG\bin\Debug\ImageCompressionJMPEG.exe.config
+D:\BCIT\Term 4\repos\ImageCompressionJMPEG\ImageCompressionJMPEG\bin\Debug\ImageCompressionJMPEG.exe
+D:\BCIT\Term 4\repos\ImageCompressionJMPEG\ImageCompressionJMPEG\bin\Debug\ImageCompressionJMPEG.pdb
