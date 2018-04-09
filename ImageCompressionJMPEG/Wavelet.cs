@@ -46,7 +46,7 @@ namespace ImageCompressionJMPEG
     
 
             int[][] result = encode2D(imageInt);
-            result = DropDetail(result);
+            //result = DropDetail(result);
             int[][] reverse = decode2D(result);
 
             Bitmap resultBitmap = new Bitmap(width, height);
@@ -80,11 +80,18 @@ namespace ImageCompressionJMPEG
             System.Buffer.BlockCopy(data, 0, result, 0, data.Length * INT_SIZE);
             for (int i = 0, index = 0; i < length; i+= 2, index++)
             {
-                int sum = (data[i] + data[i + 1]) / 2;
-                int difference = (data[i] - data[i + 1]) / 2;
+                int difference = data[i + 1] - data[i];
+                int sum = data[i] + (int)Math.Floor(difference / 2.0 + 0.5);
                 result[index] = sum;
                 result[index + length / 2] = difference;
             }
+            //for (int i = 0, index = 0; i < length; i += 2, index++)
+            //{
+            //    int sum = (data[i] + data[i + 1]) / 2;
+            //    int difference = (data[i] - data[i + 1]) / 2;
+            //    result[index] = sum;
+            //    result[index + length / 2] = difference;
+            //}
             return result;
         }
 
@@ -102,14 +109,24 @@ namespace ImageCompressionJMPEG
             System.Buffer.BlockCopy(data, 0, result, 0, data.Length * INT_SIZE);
             if (length == 1)
             {
-                result[0] = data[0] + data[1];
-                result[0 + 1] = data[0] - data[1];
+                result[0] = data[0] - (int)Math.Floor(data[1] / 2.0 + 0.5);
+                result[0 + 1] = result[0] + data[1];
             }
             for (int i = 0, index = 0; i < length; i++, index += 2)
             {
-                result[index] = data[i] + data[i + length];
-                result[index + 1] = data[i] - data[i + length];
+                result[index] = data[i] - (int)Math.Floor(data[i + length] / 2.0 + 0.5);
+                result[index + 1] = result[index] + data[i + length];
             }
+            //if (length == 1)
+            //{
+            //    result[0] = data[0] + data[1];
+            //    result[0 + 1] = data[0] - data[1];
+            //}
+            //for (int i = 0, index = 0; i < length; i++, index += 2)
+            //{
+            //    result[index] = data[i] + data[i + length];
+            //    result[index + 1] = data[i] - data[i + length];
+            //}
             return result;
         }
 
@@ -257,6 +274,56 @@ namespace ImageCompressionJMPEG
                 Debug.WriteLine("");
             }
             Debug.WriteLine("");
+        }
+
+        public static void TestData()
+        {
+
+            int[][] test = new int[][]
+            {
+                new int[] {1,2,3,4},
+                new int[] {2,4,6,8},
+                new int[] {1,3,5,7},
+                new int[] {4,3,2,1}
+            };
+
+            Print2D(test);
+            int[][] rr = encode2D(test);
+            Print2D(rr);
+            Print2D(decode2D(rr));
+
+
+            int[][] data2d = new int[][]
+            {
+                new int[] {1,2,3,4,2,4,3,1,6,7,10,13,17,12,13,14}, new int[] {1,2,3,4,2,4,3,1,6,7,10,13,17,12,13,14},
+                new int[] {1,2,3,4,2,4,3,1,6,7,10,13,17,12,13,14}, new int[] {1,2,3,4,2,4,3,1,6,7,10,13,17,12,13,14},
+                new int[] {1,2,3,4,2,4,3,1,6,7,10,13,17,12,13,14}, new int[] {1,2,3,4,2,4,3,1,6,7,10,13,17,12,13,14},
+                new int[] {1,2,3,4,2,4,3,1,6,7,10,13,17,12,13,14}, new int[] {1,2,3,4,2,4,3,1,6,7,10,13,17,12,13,14},
+                new int[] {1,2,3,4,2,4,3,1,6,7,10,13,17,12,13,14}, new int[] {1,2,3,4,2,4,3,1,6,7,10,13,17,12,13,14},
+                new int[] {1,2,3,4,2,4,3,1,6,7,10,13,17,12,13,14}, new int[] {1,2,3,4,2,4,3,1,6,7,10,13,17,12,13,14},
+                new int[] {1,2,3,4,2,4,3,1,6,7,10,13,17,12,13,14}, new int[] {1,2,3,4,2,4,3,1,6,7,10,13,17,12,13,14},
+                new int[] {1,2,3,4,2,4,3,1,6,7,10,13,17,12,13,14}, new int[] {1,2,3,4,2,4,3,1,6,7,10,13,17,12,13,14}
+
+            };
+
+            Print2D(data2d);
+            int[][] result2d = encode2D(data2d);
+            Print2D(result2d);
+            Print2D(decode2D(result2d));
+
+        }
+
+        public static void Print2D(int[][] input)
+        {
+            for (int i = 0; i < input.Length; i++)
+            {
+                for (int j = 0; j < input.Length; j++)
+                {
+                    Console.Write(input[i][j] + " ");
+                }
+                Console.WriteLine("");
+            }
+            Console.WriteLine("");
         }
     }
 }

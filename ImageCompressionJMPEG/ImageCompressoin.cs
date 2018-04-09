@@ -129,6 +129,7 @@ namespace ImageCompressionJMPEG
         /// </summary>
         private void initializeCustom()
         {
+            Wavelet.TestData();
             //
             // Control
             //
