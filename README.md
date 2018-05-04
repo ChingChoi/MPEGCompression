@@ -21,7 +21,7 @@ Original bitmap image (left), compressed bitmap image (right)
 ![demo-jpg](https://github.com/ChingChoi/MPEGCompression/blob/master/Resource/img/demo-jpg.png)
 
 Size is 3% of original image
-![demo-jpg-compression](https://github.com/ChingChoi/MPEGCompression/blob/master/Resource/img/demo-jpg-compression.png)
+![demo-jpg-compression](https://github.com/ChingChoi/MPEGCompression/blob/master/Resource/img/demo-jpg-compress.png)
 
 Cr Cb channel view
 ![demo-crcb](https://github.com/ChingChoi/MPEGCompression/blob/master/Resource/img/demo-crcb.png)
