@@ -18,13 +18,13 @@ How to use - Compress a single bitmap image using JPEG and save
 3. Save the result in File -> Save [Ctrl + Shift + S]
 
 Original bitmap image (left), compressed bitmap image (right)
-![demo-jpg](https://github.com/ChingChoi/MPEGCompression/blob/master/Resource/demo-jpg.png)
+![demo-jpg](https://github.com/ChingChoi/MPEGCompression/blob/master/Resource/img/demo-jpg.png)
 
 Size is 3% of original image
-![demo-jpg-compression](https://github.com/ChingChoi/MPEGCompression/blob/master/Resource/demo-jpg-compression.png)
+![demo-jpg-compression](https://github.com/ChingChoi/MPEGCompression/blob/master/Resource/img/demo-jpg-compression.png)
 
 Cr Cb channel view
-![demo-crcb](https://github.com/ChingChoi/MPEGCompression/blob/master/Resource/demo-crcb.png)
+![demo-crcb](https://github.com/ChingChoi/MPEGCompression/blob/master/Resource/img/demo-crcb.png)
 
 How to use - Compress a video (bitmap images) using JPEG + MPEG and save
 1. Click "M" button to enter MPEG mode
@@ -33,10 +33,10 @@ How to use - Compress a video (bitmap images) using JPEG + MPEG and save
 4. Save the result in File -> Save [Ctrl + Shift + S]
 
 Compressed video view
-![demo-mpg](https://github.com/ChingChoi/MPEGCompression/blob/master/Resource/demo-mpg.png)
+![demo-mpg](https://github.com/ChingChoi/MPEGCompression/blob/master/Resource/img/demo-mpg.png)
 
 Size is roughly 25 times smaller than all 360 frames altogether
-![demo-mpg-compress](https://github.com/ChingChoi/MPEGCompression/blob/master/Resource/demo-mpg-compress.png)
+![demo-mpg-compress](https://github.com/ChingChoi/MPEGCompression/blob/master/Resource/img/demo-mpg-compress.png)
 
 
 How to use - Compress a single bitmap image using Wavelet (short proof of concept implementation - currently not compatible with images width different from height)
